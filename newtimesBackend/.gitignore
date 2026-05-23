@@ -1,0 +1,20 @@
+.env
+node_modules/
+dist
+coverage
+logs
+*.log
+*.tmp
+.DS_Store
+.vscode
+.idea
+*.swp
+*.swo
+*.bak
+*.backup
+*.zip
+*.tar.gz
+
+# Ignore build artifacts
+build   
+
