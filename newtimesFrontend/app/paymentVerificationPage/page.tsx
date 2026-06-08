@@ -42,6 +42,7 @@ function formatKES(amount) {
 }
 
 type VerifyState = "verifying" | "success" | "failed" | "timeout"
+export const dynamic = "force-dynamic";
 
 export default function PaymentVerifyPage() {
   const searchParams = useSearchParams()
