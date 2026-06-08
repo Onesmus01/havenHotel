@@ -24,13 +24,15 @@ import {
   Star,
   AlertCircle,
   RefreshCw,
+  CreditCard, // ← ADDED
 } from "lucide-react"
 import Link from "next/link"
 import Image from "next/image"
 
 const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8080/api"
 
-function formatKES(amount: number) {
+// FIXED: removed ": number" type annotation
+function formatKES(amount) {
   return new Intl.NumberFormat("en-KE", {
     style: "currency",
     currency: "KES",
@@ -49,9 +51,9 @@ export default function PaymentVerifyPage() {
   const amount = Number(searchParams.get("amount")) || 0
   const method = searchParams.get("method") || "mpesa"
 
-  const [status, setStatus] = useState<VerifyState>("verifying")
-  const [booking, setBooking] = useState<any>(null)
-  const [room, setRoom] = useState<any>(null)
+  const [status, setStatus] = useState("verifying")
+  const [booking, setBooking] = useState(null)
+  const [room, setRoom] = useState(null)
   const [attempts, setAttempts] = useState(0)
   const [receiptUrl, setReceiptUrl] = useState("")
 
@@ -62,8 +64,8 @@ export default function PaymentVerifyPage() {
       return
     }
 
-    let interval: NodeJS.Timeout
-    let timeout: NodeJS.Timeout
+    let interval
+    let timeout
 
     const checkStatus = async () => {
       try {
@@ -97,7 +99,7 @@ export default function PaymentVerifyPage() {
     // Timeout after 90 seconds
     timeout = setTimeout(() => {
       clearInterval(interval)
-      if (status === "verifying") setStatus("timeout")
+      setStatus((current) => current === "verifying" ? "timeout" : current)
     }, 90000)
 
     return () => {
@@ -420,7 +422,9 @@ export default function PaymentVerifyPage() {
                       </div>
                       <div className="flex justify-between">
                         <span className="text-muted-foreground">Duration</span>
-                        <span className="font-medium">{booking?.nights || nights} night{booking?.nights !== 1 ? "s" : ""}</span>
+                        <span className="font-medium">
+                          {booking?.nights ? `${booking.nights} night${booking.nights !== 1 ? "s" : ""}` : "—"}
+                        </span>
                       </div>
                       <div className="flex justify-between">
                         <span className="text-muted-foreground">Guests</span>
