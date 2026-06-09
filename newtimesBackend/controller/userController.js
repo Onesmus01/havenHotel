@@ -3,45 +3,105 @@ import bcrypt from 'bcryptjs'
 import jwt from 'jsonwebtoken'
 import Booking from "../models/bookingModel.js";
 import Room from "../models/roomModel.js";
-export const signIn = async(req,res)=> {
+
+export const signIn = async (req, res) => {
     try {
-        const {email,password} = req.body
-        if (!email) return res.status(400).json({ success: false, message: "Please provide email" });
-        if (!password) return res.status(400).json({ success: false, message: "Please provide password" });
+        const { email, password } = req.body;
 
-        const user = await User.findOne({email})
-        if(!user){
-            res.status(400).json({success: false,message: "User does not exist please register"})
+        // ── Validation ─────────────────────────────────────────────
+        if (!email) {
+            return res.status(400).json({ 
+                success: false, 
+                message: "Please provide email" 
+            });
         }
 
-        const passwordExist = await bcrypt.compare(password,user.password)
-        if(!passwordExist){
-            return res.status(400).json({success:false,message: "Invalid credentials"})
+        if (!password) {
+            return res.status(400).json({ 
+                success: false, 
+                message: "Please provide password" 
+            });
         }
 
+        // ── Find user ──────────────────────────────────────────────
+        const user = await User.findOne({ email }).select('+password');
+        
+        if (!user) {
+            // Use same message as invalid password to prevent user enumeration
+            return res.status(401).json({ 
+                success: false, 
+                message: "Invalid credentials" 
+            });
+        }
 
-            const tokenData = {
+        // ── Verify password ────────────────────────────────────────
+        const isPasswordValid = await bcrypt.compare(password, user.password);
+        
+        if (!isPasswordValid) {
+            return res.status(401).json({ 
+                success: false, 
+                message: "Invalid credentials" 
+            });
+        }
+
+        // ── Check if account is active (optional but recommended) ──
+        if (user.isActive === false) {
+            return res.status(403).json({
+                success: false,
+                message: "Account is deactivated. Please contact support."
+            });
+        }
+
+        // ── Generate JWT ───────────────────────────────────────────
+        const tokenPayload = {
+            userId: user._id,
+            email: user.email,
+            // Add role if you have RBAC: role: user.role
+        };
+
+        const token = jwt.sign(
+            tokenPayload,
+            process.env.JWT_SECRET,
+            { expiresIn: '2d', issuer: 'your-app-name' }
+        );
+
+        // ── Set cookie ─────────────────────────────────────────────
+        const isProduction = process.env.NODE_ENV === 'production';
+        
+        const cookieOptions = {
+            httpOnly: true,
+            secure: isProduction,           // true in prod, false in dev
+            sameSite: isProduction ? 'none' : 'lax', // 'none' needs secure=true
+            maxAge: 2 * 24 * 60 * 60 * 1000, // 2 days in ms
+            path: '/',
+            // domain: isProduction ? '.yourdomain.com' : undefined
+        };
+
+        res.cookie('token', token, cookieOptions);
+
+        // ── Send response ──────────────────────────────────────────
+        return res.status(200).json({
+            success: true,
+            message: "Login successful",
+            user: {
                 _id: user._id,
-                email: user.email
+                name: user.name,
+                email: user.email,
+                // Add other safe fields, NEVER send password
             }
-            const tokenOptions = {
-                httpOnly: true,
-                secure: true,
-                sameSite: 'none',
-                maxAge: 2 * 24 * 60 * 60 * 1000
-            }
-           const token = jwt.sign(tokenData,process.env.JWT_SECRET,{expiresIn: '2d'})
-           res.cookie('token',token,tokenOptions)
-           res.status(201).json({success: true,message: 'login successful'})
-    
+        });
 
     } catch (error) {
-         res.status(500).json({success: false, message: error.message})
-            console.log(error.message,"Internal server error");
-
+        console.error('SignIn Error:', error);
+        
+        return res.status(500).json({
+            success: false,
+            message: isProduction 
+                ? "Internal server error" 
+                : error.message
+        });
     }
-
-}
+};
 
 export const signUp = async (req,res) => {
     try {
