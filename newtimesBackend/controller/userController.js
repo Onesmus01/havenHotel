@@ -3,23 +3,18 @@ import bcrypt from 'bcryptjs'
 import jwt from 'jsonwebtoken'
 import Booking from "../models/bookingModel.js";
 import Room from "../models/roomModel.js";
+import dotenv from 'dotenv';
+dotenv.config();
 
 export const signIn = async (req, res) => {
     try {
         const { email, password } = req.body;
 
         // ── Validation ─────────────────────────────────────────────
-        if (!email) {
+        if (!email || !password) {
             return res.status(400).json({ 
                 success: false, 
-                message: "Please provide email" 
-            });
-        }
-
-        if (!password) {
-            return res.status(400).json({ 
-                success: false, 
-                message: "Please provide password" 
+                message: !email ? "Please provide email" : "Please provide password" 
             });
         }
 
@@ -27,7 +22,6 @@ export const signIn = async (req, res) => {
         const user = await User.findOne({ email }).select('+password');
         
         if (!user) {
-            // Use same message as invalid password to prevent user enumeration
             return res.status(401).json({ 
                 success: false, 
                 message: "Invalid credentials" 
@@ -44,7 +38,7 @@ export const signIn = async (req, res) => {
             });
         }
 
-        // ── Check if account is active (optional but recommended) ──
+        // ── Check if account is active ─────────────────────────────
         if (user.isActive === false) {
             return res.status(403).json({
                 success: false,
@@ -53,29 +47,35 @@ export const signIn = async (req, res) => {
         }
 
         // ── Generate JWT ───────────────────────────────────────────
-        const tokenPayload = {
-            userId: user._id,
-            email: user.email,
-            // Add role if you have RBAC: role: user.role
-        };
-
         const token = jwt.sign(
-            tokenPayload,
+            { userId: user._id, email: user.email },
             process.env.JWT_SECRET,
-            { expiresIn: '2d', issuer: 'your-app-name' }
+            { expiresIn: '2d', issuer: process.env.APP_NAME || 'your-app' }
         );
 
-        // ── Set cookie ─────────────────────────────────────────────
+        // ── Cookie Configuration (Production-Ready) ─────────────────
         const isProduction = process.env.NODE_ENV === 'production';
         
+        // 🐛 DEBUG: Log env state (remove in production after verifying)
+        console.log("🔍 NODE_ENV:", process.env.NODE_ENV);
+        console.log("🔍 isProduction:", isProduction);
+
+        console.log("🔐 ENV CHECK:");
+        console.log("  NODE_ENV:", process.env.NODE_ENV);
+        console.log("  JWT_SECRET:", process.env.JWT_SECRET ? "Set ✓" : "MISSING ✗");
+        console.log("  APP_NAME:", process.env.APP_NAME || "Not set");
+
         const cookieOptions = {
             httpOnly: true,
-            secure: isProduction,           // true in prod, false in dev
-            sameSite: isProduction ? 'none' : 'lax', // 'none' needs secure=true
-            maxAge: 2 * 24 * 60 * 60 * 1000, // 2 days in ms
+            secure: isProduction,                    // HTTPS only in prod
+            sameSite: isProduction ? 'none' : 'lax', // 'none' requires secure=true
+            maxAge: 2 * 24 * 60 * 60 * 1000,         // 2 days
             path: '/',
             // domain: isProduction ? '.yourdomain.com' : undefined
         };
+
+        // 🐛 DEBUG: Log final cookie config (remove after verifying)
+        console.log("🔍 Cookie options:", cookieOptions);
 
         res.cookie('token', token, cookieOptions);
 
@@ -87,12 +87,14 @@ export const signIn = async (req, res) => {
                 _id: user._id,
                 name: user.name,
                 email: user.email,
-                // Add other safe fields, NEVER send password
+                // role: user.role // if using RBAC
             }
         });
 
     } catch (error) {
         console.error('SignIn Error:', error);
+        
+        const isProduction = process.env.NODE_ENV === 'production';
         
         return res.status(500).json({
             success: false,

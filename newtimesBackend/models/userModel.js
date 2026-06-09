@@ -6,13 +6,13 @@ const userSchema = new mongoose.Schema(
     name: {
       type: String,
       required: true,
-      trim: true, // remove extra spaces
+      trim: true, 
     },
     email: {
       type: String,
       required: true,
       unique: true,
-      lowercase: true, // store emails consistently
+      lowercase: true, 
       trim: true,
     },
     password: {
@@ -21,16 +21,16 @@ const userSchema = new mongoose.Schema(
     },
     profilePic: {
       type: String,
-      default: "", // URL or base64
+      default: "", 
     },
     role: {
       type: String,
-      enum: ["GENERAL", "ADMIN", "STAFF"], // optional but safer
+      enum: ["GENERAL", "ADMIN", "STAFF"], 
       default: "GENERAL",
     },
     loyaltyTier: {
       type: String,
-      enum: ["Bronze", "Silver", "Gold", "Platinum"], // add more tiers later
+      enum: ["Bronze", "Silver", "Gold", "Platinum"], 
       default: "Bronze",
     },
     totalBookings: {
@@ -47,7 +47,7 @@ const userSchema = new mongoose.Schema(
     },
   },
   {
-    timestamps: true, // createdAt & updatedAt auto
+    timestamps: true, 
   }
 );
 
