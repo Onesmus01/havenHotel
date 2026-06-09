@@ -27,7 +27,7 @@ export const signIn = async(req,res)=> {
             const tokenOptions = {
                 httpOnly: true,
                 secure: true,
-                sameSite: 'strict',
+                sameSite: 'none',
                 maxAge: 2 * 24 * 60 * 60 * 1000
             }
            const token = jwt.sign(tokenData,process.env.JWT_SECRET,{expiresIn: '2d'})
