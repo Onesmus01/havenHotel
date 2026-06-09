@@ -13,7 +13,7 @@ const authToken = async(req,res,next)=> {
              return res.status(400).json({success: false,message: "Token is missing,unauthorized"})
         }
 
-        req.userId =  decodedToken?._id
+        req.userId =  decodedToken?.userId
         next()
 
     } catch (error) {

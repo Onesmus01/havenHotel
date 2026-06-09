@@ -10,7 +10,6 @@ export const signIn = async (req, res) => {
     try {
         const { email, password } = req.body;
 
-        // ── Validation ─────────────────────────────────────────────
         if (!email || !password) {
             return res.status(400).json({ 
                 success: false, 
@@ -18,27 +17,17 @@ export const signIn = async (req, res) => {
             });
         }
 
-        // ── Find user ──────────────────────────────────────────────
         const user = await User.findOne({ email }).select('+password');
         
         if (!user) {
-            return res.status(401).json({ 
-                success: false, 
-                message: "Invalid credentials" 
-            });
+            return res.status(401).json({ success: false, message: "Invalid credentials" });
         }
 
-        // ── Verify password ────────────────────────────────────────
         const isPasswordValid = await bcrypt.compare(password, user.password);
-        
         if (!isPasswordValid) {
-            return res.status(401).json({ 
-                success: false, 
-                message: "Invalid credentials" 
-            });
+            return res.status(401).json({ success: false, message: "Invalid credentials" });
         }
 
-        // ── Check if account is active ─────────────────────────────
         if (user.isActive === false) {
             return res.status(403).json({
                 success: false,
@@ -46,40 +35,29 @@ export const signIn = async (req, res) => {
             });
         }
 
-        // ── Generate JWT ───────────────────────────────────────────
         const token = jwt.sign(
             { userId: user._id, email: user.email },
             process.env.JWT_SECRET,
             { expiresIn: '2d', issuer: process.env.APP_NAME || 'your-app' }
         );
 
-        // ── Cookie Configuration (Production-Ready) ─────────────────
-        const isProduction = process.env.NODE_ENV === 'production';
+        // ── FIXED: Detect HTTPS from request, not just NODE_ENV ──
+        const isSecure = req.secure || req.headers['x-forwarded-proto'] === 'https';
         
-        // 🐛 DEBUG: Log env state (remove in production after verifying)
-        console.log("🔍 NODE_ENV:", process.env.NODE_ENV);
-        console.log("🔍 isProduction:", isProduction);
-
-        console.log("🔐 ENV CHECK:");
-        console.log("  NODE_ENV:", process.env.NODE_ENV);
-        console.log("  JWT_SECRET:", process.env.JWT_SECRET ? "Set ✓" : "MISSING ✗");
-        console.log("  APP_NAME:", process.env.APP_NAME || "Not set");
-
         const cookieOptions = {
             httpOnly: true,
-            secure: isProduction,                    // HTTPS only in prod
-            sameSite: isProduction ? 'none' : 'lax', // 'none' requires secure=true
-            maxAge: 2 * 24 * 60 * 60 * 1000,         // 2 days
+            secure: true,           // ✅ Always true — Render is always HTTPS
+            sameSite: 'none',       // ✅ Required for cross-origin (Vercel → Render)
+            maxAge: 2 * 24 * 60 * 60 * 1000,
             path: '/',
-            // domain: isProduction ? '.yourdomain.com' : undefined
         };
 
-        // 🐛 DEBUG: Log final cookie config (remove after verifying)
-        console.log("🔍 Cookie options:", cookieOptions);
+        console.log("🔍 Setting cookie with options:", cookieOptions);
+        console.log("🔍 Request secure:", req.secure);
+        console.log("🔍 X-Forwarded-Proto:", req.headers['x-forwarded-proto']);
 
         res.cookie('token', token, cookieOptions);
 
-        // ── Send response ──────────────────────────────────────────
         return res.status(200).json({
             success: true,
             message: "Login successful",
@@ -87,18 +65,14 @@ export const signIn = async (req, res) => {
                 _id: user._id,
                 name: user.name,
                 email: user.email,
-                // role: user.role // if using RBAC
             }
         });
 
     } catch (error) {
         console.error('SignIn Error:', error);
-        
-        const isProduction = process.env.NODE_ENV === 'production';
-        
         return res.status(500).json({
             success: false,
-            message: isProduction 
+            message: process.env.NODE_ENV === 'production' 
                 ? "Internal server error" 
                 : error.message
         });
