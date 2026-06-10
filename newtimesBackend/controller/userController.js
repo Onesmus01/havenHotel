@@ -11,19 +11,20 @@ export const signIn = async (req, res) => {
         const { email, password } = req.body;
 
         if (!email || !password) {
-            return res.status(400).json({ 
-                success: false, 
-                message: !email ? "Please provide email" : "Please provide password" 
+            return res.status(400).json({
+                success: false,
+                message: !email ? "Please provide email" : "Please provide password"
             });
         }
 
         const user = await User.findOne({ email }).select('+password');
-        
+
         if (!user) {
             return res.status(401).json({ success: false, message: "Invalid credentials" });
         }
 
         const isPasswordValid = await bcrypt.compare(password, user.password);
+
         if (!isPasswordValid) {
             return res.status(401).json({ success: false, message: "Invalid credentials" });
         }
@@ -41,22 +42,17 @@ export const signIn = async (req, res) => {
             { expiresIn: '2d', issuer: process.env.APP_NAME || 'your-app' }
         );
 
-        // ── FIXED: Detect HTTPS from request, not just NODE_ENV ──
-        const isSecure = req.secure || req.headers['x-forwarded-proto'] === 'https';
-        
+        const isProd = process.env.NODE_ENV === "production";
+
         const cookieOptions = {
             httpOnly: true,
-            secure: true,           // ✅ Always true — Render is always HTTPS
-            sameSite: 'none',       // ✅ Required for cross-origin (Vercel → Render)
+            secure: isProd,
+            sameSite: isProd ? "none" : "lax",
+            path: "/",
             maxAge: 2 * 24 * 60 * 60 * 1000,
-            path: '/',
         };
 
-        console.log("🔍 Setting cookie with options:", cookieOptions);
-        console.log("🔍 Request secure:", req.secure);
-        console.log("🔍 X-Forwarded-Proto:", req.headers['x-forwarded-proto']);
-
-        res.cookie('token', token, cookieOptions);
+        res.cookie("token", token, cookieOptions);
 
         return res.status(200).json({
             success: true,
@@ -72,8 +68,8 @@ export const signIn = async (req, res) => {
         console.error('SignIn Error:', error);
         return res.status(500).json({
             success: false,
-            message: process.env.NODE_ENV === 'production' 
-                ? "Internal server error" 
+            message: process.env.NODE_ENV === 'production'
+                ? "Internal server error"
                 : error.message
         });
     }
