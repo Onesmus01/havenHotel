@@ -32,31 +32,31 @@ const Login = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      const response = await fetch(`${backendUrl}/user/signin`, {
-        method: "POST",
-        credentials: "include",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          email: data.email,
-          password: data.password,
-        }),
-      });
+        const response = await fetch(`${backendUrl}/user/signin`, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+                email: data.email,
+                password: data.password,
+            }),
+        });
 
-      const responseData = await response.json();
-      if (response.ok) {
-        toast.success(responseData.message || "Login successful");
-        router.push("/"); // ✅ Next.js navigation
-        fetchUserDetails();
-      } else {
-        toast.error(responseData.message || "Login failed");
-      }
+        const responseData = await response.json();
+        if (response.ok) {
+            localStorage.setItem("token", responseData.token);  // ✅ Store token
+            toast.success(responseData.message || "Login successful");
+            router.push("/");
+            fetchUserDetails();
+        } else {
+            toast.error(responseData.message || "Login failed");
+        }
     } catch (error) {
-      toast.error(error.message || "Something went wrong");
-      console.error("Login error:", error);
+        toast.error(error.message || "Something went wrong");
+        console.error("Login error:", error);
     }
-  };
+};
 
   return (
     <section className="flex items-start justify-center pt-16 bg-gradient-to-r from-blue-100 to-blue-50 font-sans min-h-screen">

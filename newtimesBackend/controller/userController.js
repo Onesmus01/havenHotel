@@ -42,24 +42,10 @@ export const signIn = async (req, res) => {
             { expiresIn: '2d', issuer: process.env.APP_NAME || 'your-app' }
         );
 
-        const isProd = process.env.NODE_ENV === "production";
-
-        const cookieOptions = {
-            httpOnly: true,
-            secure:true,
-            sameSite:"none",
-            path:"/",
-            maxAge: 2 * 24 * 60 * 60 * 1000,
-        };
-
-        res.cookie("token", token, cookieOptions);
-
-        res.cookie("token", token, cookieOptions);
-        console.log("✅ Set-Cookie header:", res.get('Set-Cookie'));  // ADD THIS
-
         return res.status(200).json({
             success: true,
             message: "Login successful",
+            token: token,  // ✅ Return token in response body
             user: {
                 _id: user._id,
                 name: user.name,
@@ -110,18 +96,11 @@ export const signUp = async (req,res) => {
 }
 
 export const logout = async (req, res) => {
-  try {
-    res.clearCookie("token", {
-      httpOnly: true,
-      secure: true,        // ✅ Match signIn
-      sameSite: "none",    // ✅ Match signIn
-      path: "/",
-    });
-
-    res.json({ success: true, message: "Logged out successfully", data: [] });
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
-  }
+    try {
+        res.json({ success: true, message: "Logged out successfully", data: [] });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
 };
  export const userDetails = async (req,res)=> {
     try {

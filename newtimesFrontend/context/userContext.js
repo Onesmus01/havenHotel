@@ -17,20 +17,30 @@ export const ContextProvider = ({ children }) => {
   const fetchUserDetails = async () => {
     setLoading(true);
     try {
-      const res = await fetch(`${backendUrl}/user/user-details`, {
-        method: "GET",
-        credentials: "include",
-      });
-      const data = await res.json();
-      if (res.ok) setUserDetails(data.data);
-      else toast.error(data.message || "Failed to fetch user details");
+        const token = localStorage.getItem("token");  // ✅ Get token from storage
+        
+        const res = await fetch(`${backendUrl}/user/user-details`, {
+            method: "GET",
+            headers: {
+                "Authorization": `Bearer ${token}`,  // ✅ Send in header
+            },
+        });
+        
+        const data = await res.json();
+        if (res.ok) setUserDetails(data.data);
+        else {
+            toast.error(data.message || "Failed to fetch user details");
+            if (res.status === 401) {
+                localStorage.removeItem("token");  // Clear invalid token
+                setUserDetails(null);
+            }
+        }
     } catch (err) {
-      toast.error(err.message || "Something went wrong");
+        toast.error(err.message || "Something went wrong");
     } finally {
-      setLoading(false); // ✅ stop loading after fetch
+        setLoading(false);
     }
-  };
-
+};
   useEffect(() => {
     fetchUserDetails();
   }, []);
