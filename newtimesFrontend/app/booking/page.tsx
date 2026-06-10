@@ -190,10 +190,12 @@ export default function BookingPage() {
     }
     setIsLoading(true)
     try {
+      const token = localStorage.getItem("token");  // ✅ Get token from storage
+
       const res = await fetch(`${backendUrl}/bookings/book`, {
         method: "POST",
         credentials: "include",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },  // ✅ Include token in header
         body: JSON.stringify({
           ...bookingData,
           roomId: backendRoom?.data?._id || roomId,
