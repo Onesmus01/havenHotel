@@ -37,7 +37,6 @@ app.use(cors({
 // The app.use(cors()) above already handles preflight automatically
 
 // ── Body parsers BEFORE routes ──
-app.set("trust proxy", 1);
 app.use(express.json())
 app.use(express.urlencoded({ extended: true }))
 app.use(cookieParser())
