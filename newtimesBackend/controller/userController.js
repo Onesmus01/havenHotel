@@ -54,6 +54,9 @@ export const signIn = async (req, res) => {
 
         res.cookie("token", token, cookieOptions);
 
+        res.cookie("token", token, cookieOptions);
+        console.log("✅ Set-Cookie header:", res.get('Set-Cookie'));  // ADD THIS
+
         return res.status(200).json({
             success: true,
             message: "Login successful",
@@ -108,12 +111,10 @@ export const signUp = async (req,res) => {
 
 export const logout = async (req, res) => {
   try {
-    const isProd = process.env.NODE_ENV === "production";
-
     res.clearCookie("token", {
       httpOnly: true,
-      secure: isProd,
-      sameSite: isProd ? "none" : "lax",
+      secure: true,        // ✅ Match signIn
+      sameSite: "none",    // ✅ Match signIn
       path: "/",
     });
 
