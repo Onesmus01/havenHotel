@@ -46,8 +46,8 @@ export const signIn = async (req, res) => {
 
         const cookieOptions = {
             httpOnly: true,
-            secure: isProd,
-            sameSite: isProd ? "none" : "lax",
+            secure:true,
+            sameSite:"none",
             path:"/",
             maxAge: 2 * 24 * 60 * 60 * 1000,
         };
