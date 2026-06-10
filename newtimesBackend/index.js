@@ -10,6 +10,7 @@ import bookingRouter from './routes/bookingRoute.js'
 import paymentRoutes from "./routes/paymentRoute.js";
 
 const app = express()
+app.set("trust proxy", 1); 
 app.use(cookieParser())
 
 
@@ -35,11 +36,6 @@ app.use(cors({
     allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
 }))
 
-// ❌ REMOVED: app.options('*', cors()) — not needed and crashes in Express 5
-// The app.use(cors()) above already handles preflight automatically
-
-// ── Body parsers BEFORE routes ──
-app.set("trust proxy", 1);
 app.use(express.json())
 app.use(express.urlencoded({ extended: true }))
 
