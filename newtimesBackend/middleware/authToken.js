@@ -15,7 +15,7 @@ const authToken = async (req, res, next) => {
     } catch (error) {
         return res.status(401).json({
             success: false,
-            message: "Invalid or expired token",
+            message: "Invalid token, please login again",
         })
     }
 }
