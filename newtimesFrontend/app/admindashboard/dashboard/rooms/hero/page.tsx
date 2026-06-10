@@ -41,8 +41,10 @@ export default function HeroAdminPage() {
 
   const fetchHero = async () => {
     try {
+      const token = localStorage.getItem("token")
       const res = await fetch(`${backendUrl}/room/hero/active`, {
         credentials: "include",
+        headers: { "Authorization": `Bearer ${token}` },
       });
       const data = await res.json();
       setHero(data);
@@ -66,12 +68,15 @@ export default function HeroAdminPage() {
     setMessage("");
 
     try {
+        const token = localStorage.getItem("token")
+
       const formData = new FormData();
       formData.append("image", image);
 
       const res = await fetch(`${backendUrl}/room/hero/add-hero`, {
         method: "POST",
         credentials: "include",
+        headers: { "Authorization": `Bearer ${token}` },
         body: formData,
       });
 
@@ -95,12 +100,14 @@ export default function HeroAdminPage() {
     if (!hero || !image) return toast.error("Select an image and have an active hero");
     setLoading(true);
     try {
+      const token = localStorage.getItem("token")
       const formData = new FormData();
       formData.append("image", image);
 
       const res = await fetch(`${backendUrl}/room/hero/${hero._id}`, {
         method: "PUT",
         credentials: "include",
+        headers: { "Authorization": `Bearer ${token}` },
         body: formData,
       });
       const data = await res.json();
@@ -123,9 +130,11 @@ export default function HeroAdminPage() {
     if (!hero) return toast.error("No hero image to delete");
     setLoading(true);
     try {
+      const token = localStorage.getItem("token")
       const res = await fetch(`${backendUrl}/room/hero/${hero._id}`, {
         method: "DELETE",
         credentials: "include",
+        headers: { "Authorization": `Bearer ${token}` },
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.message);

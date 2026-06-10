@@ -26,11 +26,13 @@ export default function AllHeroesPage() {
 
   // Fetch all hero images
   const fetchHeroes = async () => {
+    const token = localStorage.getItem("token")
     try {
       setLoading(true);
       // Adjust this endpoint to match your backend
       const res = await fetch(`${backendUrl}/room/hero/all`, {
         credentials: "include",
+        headers: { "Authorization": `Bearer ${token}` },
       });
 
       // If you don't have /hero/all yet, try the active one temporarily:
@@ -57,11 +59,13 @@ export default function AllHeroesPage() {
 
   // Delete hero image
   const handleDelete = async (id) => {
+    const token = localStorage.getItem("token")
     try {
       setDeletingId(id);
       const res = await fetch(`${backendUrl}/room/hero/${id}`, {
         method: "DELETE",
         credentials: "include",
+        headers: { "Authorization": `Bearer ${token}` },
       });
 
       const result = await res.json();

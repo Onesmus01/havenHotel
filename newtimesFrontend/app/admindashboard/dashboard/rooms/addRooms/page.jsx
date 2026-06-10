@@ -94,6 +94,7 @@ export default function AddRoom() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
+      const token = localStorage.getItem("token")
       const formData = new FormData();
       [
         "roomNumber",
@@ -116,6 +117,7 @@ export default function AddRoom() {
       const res = await fetch(`${backendUrl}/room/add-room`, {
         method: "POST",
         credentials: "include",
+        headers: { "Authorization": `Bearer ${token}` },
         body: formData,
       });
 

@@ -95,15 +95,16 @@ export default function AnalyticsPage() {
 
   useEffect(() => {
     const fetchAll = async () => {
+      const token = localStorage.getItem("token");
       try {
         setLoading(true);
 
         const [analyticsRes, bookingsRes, roomsRes, usersRes, paymentsRes] = await Promise.all([
-          fetch(`${backendUrl}/user/analytics`, { credentials: "include" }),
-          fetch(`${backendUrl}/bookings/all-bookings`, { credentials: "include" }),
-          fetch(`${backendUrl}/room/get-rooms`),
-          fetch(`${backendUrl}/user/all-users`, { credentials: "include" }),
-          fetch(`${backendUrl}/payments/all-payments`, { credentials: "include" }),
+          fetch(`${backendUrl}/user/analytics`, { credentials: "include", headers: { "Authorization": `Bearer ${token}` } } ),
+          fetch(`${backendUrl}/bookings/all-bookings`, { credentials: "include", headers: { "Authorization": `Bearer ${token}` } }),
+          fetch(`${backendUrl}/room/get-rooms`, { credentials: "include", headers: { "Authorization": `Bearer ${token}` } }),
+          fetch(`${backendUrl}/user/all-users`, { credentials: "include", headers: { "Authorization": `Bearer ${token}` } }),
+          fetch(`${backendUrl}/payments/all-payments`, { credentials: "include", headers: { "Authorization": `Bearer ${token}` } }),
         ]);
 
         const [analyticsData, bookingsData, roomsData, usersData, paymentsData] = await Promise.all([

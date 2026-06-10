@@ -152,12 +152,13 @@ export default function DashboardPage() {
 
   useEffect(() => {
     const fetchData = async () => {
+      const token = localStorage.getItem("token");
       try {
         setLoading(true);
         const [bookingsRes, roomsRes, analyticsRes] = await Promise.all([
-          fetch(`${backendUrl}/bookings/all-bookings`, { credentials: "include" }),
-          fetch(`${backendUrl}/room/get-rooms`),
-          fetch(`${backendUrl}/user/analytics`, { credentials: "include" })
+          fetch(`${backendUrl}/bookings/all-bookings`, { credentials: "include", headers: { "Authorization": `Bearer ${token}` } }),
+          fetch(`${backendUrl}/room/get-rooms`, { credentials: "include", headers: { "Authorization": `Bearer ${token}` } }),
+          fetch(`${backendUrl}/user/analytics`, { credentials: "include", headers: { "Authorization": `Bearer ${token}` } })
         ]);
 
         const bookingsData = await bookingsRes.json();

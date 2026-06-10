@@ -47,9 +47,11 @@ export default function RoomsPage() {
   const handleDelete = async (id) => {
     if (!confirm("Delete this room permanently?")) return;
     try {
+      const token = localStorage.getItem("token")
       const res = await fetch(`${backendUrl}/room/delete-room/${id}`, {
         method: "DELETE",
         credentials: "include",
+        headers: { "Authorization": `Bearer ${token}` },
       });
       if (res.ok) {
         toast.success("Room deleted");

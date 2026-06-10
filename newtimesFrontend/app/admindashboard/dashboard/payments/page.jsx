@@ -86,10 +86,13 @@ export default function PaymentsPage() {
   }, []);
 
   const fetchPayments = async () => {
+      const token = localStorage.getItem("token");
+
     try {
       setLoading(true);
       const res = await fetch(`${backendUrl}/payments/all-payments`, {
         credentials: "include",
+        headers: { "Authorization": `Bearer ${token}` },
       });
       const data = await res.json();
       if (res.ok) setPayments(data.data || []);
@@ -103,10 +106,12 @@ export default function PaymentsPage() {
 
   const handleStatusUpdate = async (paymentId, newStatus) => {
     try {
+      const token = localStorage.getItem("token")
       const res = await fetch(`${backendUrl}/payments/${paymentId}/status`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
+        headers: { "Authorization": `Bearer ${token}` },
         body: JSON.stringify({ status: newStatus }),
       });
       if (res.ok) {

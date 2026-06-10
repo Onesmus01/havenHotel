@@ -51,10 +51,12 @@ export default function BookingsPage() {
 
   useEffect(() => {
     const fetchBookings = async () => {
+      const token = localStorage.getItem("token");
       try {
         setLoading(true);
         const res = await fetch(`${backendUrl}/bookings/all-bookings`, {
           credentials: "include",
+          headers: { "Authorization": `Bearer ${token}` },
         });
         const data = await res.json();
         if (res.ok) setBookings(data.data || []);

@@ -150,6 +150,7 @@ export default function UpdateRoom() {
     if (!roomId) return;
 
     try {
+      const token = localStorage.getItem("token");
       setSaving(true);
 
       const formData = new FormData();
@@ -183,6 +184,9 @@ export default function UpdateRoom() {
       const res = await fetch(`${backendUrl}/room/update-room/${roomId}`, {
         method: "PUT",
         credentials: "include",
+        headers: {
+          "Authorization": `Bearer ${token}`
+        },
         body: formData,
       });
 
