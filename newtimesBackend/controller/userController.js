@@ -48,7 +48,7 @@ export const signIn = async (req, res) => {
             httpOnly: true,
             secure: isProd,
             sameSite: isProd ? "none" : "lax",
-            path:"havenhotel-1.onrender.com",
+            path:"/",
             maxAge: 2 * 24 * 60 * 60 * 1000,
         };
 
@@ -108,11 +108,13 @@ export const signUp = async (req,res) => {
 
 export const logout = async (req, res) => {
   try {
-    // Clear the cookie named "token"
+    const isProd = process.env.NODE_ENV === "production";
+
     res.clearCookie("token", {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production", // optional
-      sameSite: "strict",
+      secure: isProd,
+      sameSite: isProd ? "none" : "lax",
+      path: "/",
     });
 
     res.json({ success: true, message: "Logged out successfully", data: [] });
@@ -120,7 +122,6 @@ export const logout = async (req, res) => {
     res.status(500).json({ success: false, message: error.message });
   }
 };
- 
  export const userDetails = async (req,res)=> {
     try {
 

@@ -10,6 +10,8 @@ import bookingRouter from './routes/bookingRoute.js'
 import paymentRoutes from "./routes/paymentRoute.js";
 
 const app = express()
+app.use(cookieParser())
+
 
 // ── CORS: Must be FIRST, before any routes ──
 const allowedOrigins = [
@@ -40,7 +42,6 @@ app.use(cors({
 app.set("trust proxy", 1);
 app.use(express.json())
 app.use(express.urlencoded({ extended: true }))
-app.use(cookieParser())
 
 // ── Debug middleware: Log every request ──
 app.use((req, res, next) => {
