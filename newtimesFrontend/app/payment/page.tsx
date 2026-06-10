@@ -89,6 +89,9 @@ export default function PaymentPage() {
     setPaymentStatus("processing")
 
     try {
+          const token = localStorage.getItem("token");
+
+
       if (method === "mpesa") {
         if (!phone || phone.length < 9) throw new Error("Enter a valid M-Pesa phone number")
 
@@ -97,7 +100,10 @@ export default function PaymentPage() {
         const res = await fetch(`${backendUrl}/payments/mpesa/pay`, {
           method: "POST",
           credentials: "include",
-          headers: { "Content-Type": "application/json" },
+          headers: { 
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${token}`
+          },
           body: JSON.stringify({
             phone: cleanPhone,
             amount: total,
@@ -114,6 +120,9 @@ export default function PaymentPage() {
         const pollInterval = setInterval(async () => {
           const statusRes = await fetch(`${backendUrl}/payments/mpesa/status/${data.transaction_id}`, {
             credentials: "include",
+            headers: {
+              "Authorization": `Bearer ${token}`
+            }
           })
           const statusData = await statusRes.json()
 
@@ -144,7 +153,10 @@ export default function PaymentPage() {
         const res = await fetch(`${backendUrl}/payments/cash/confirm`, {
           method: "POST",
           credentials: "include",
-          headers: { "Content-Type": "application/json" },
+          headers: { 
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${token}`
+          },
           body: JSON.stringify({ bookingId }),
         })
         const data = await res.json()
@@ -166,9 +178,14 @@ export default function PaymentPage() {
   const handleCancel = async () => {
     if (!txId) return
     try {
+          const token = localStorage.getItem("token");
+
       await fetch(`${backendUrl}/payments/mpesa/cancel/${txId}`, {
         method: "POST",
         credentials: "include",
+        headers: {
+          "Authorization": `Bearer ${token}`
+        }
       })
       setPaymentStatus("failed")
       setErrorMsg("Payment cancelled")

@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/button"
 export default function Header() {
   const [isOpen, setIsOpen] = useState(false)
   const [profileOpen, setProfileOpen] = useState(false)
-  const { user, setUserDetails, handleLogout: contextLogout } = useContext(Context)
+  const { user, setUserDetails, logoutUser } = useContext(Context)
   const dropdownRef = useRef(null)
   const menuRef = useRef(null)
   const router = useRouter()
@@ -49,26 +49,17 @@ export default function Header() {
   const firstLetter = user?.name?.[0]?.toUpperCase()
 
   /* ---------------- Logout ---------------- */
-  const handleLogout = async () => {
-    if (contextLogout) return contextLogout()
-    try {
-      const response = await fetch(`${backendUrl}/user/logout`, {
-        method: 'POST',
-        credentials: 'include',
-      })
-      const data = await response.json()
-      if (response.ok) {
-        setUserDetails(null)
-        setProfileOpen(false)
-        toast.success(data.message || "Logged out successfully")
-        router.push('/login')
-      } else {
-        toast.error(data.message || "Logout failed")
-      }
-    } catch {
-      toast.error("Something went wrong")
-    }
+const handleLogout = async () => {
+  localStorage.removeItem("token");
+  setUserDetails(null);
+  setProfileOpen(false);
+
+  if (logoutUser) {
+    await logoutUser();
   }
+
+  router.push('/login');
+}
 
   const navLinks = [
     { href: "/", label: "Home" },

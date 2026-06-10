@@ -64,9 +64,14 @@ export default function PaymentVerifyClient() {
     let timeout;
 
     const checkStatus = async () => {
+          const token = localStorage.getItem("token");
+
       try {
         const res = await fetch(`${backendUrl}/payments/mpesa/status/${transactionId}`, {
           credentials: "include",
+          headers: {
+            "Authorization": `Bearer ${token}`
+          }
         });
         const data = await res.json();
 
@@ -102,11 +107,13 @@ export default function PaymentVerifyClient() {
   }, [transactionId]);
 
   const fetchBookingDetails = async () => {
+        const token = localStorage.getItem("token");
+
     if (!bookingId) return;
     try {
       const [bookingRes, receiptRes] = await Promise.all([
-        fetch(`${backendUrl}/bookings/${bookingId}`, { credentials: "include" }),
-        fetch(`${backendUrl}/payments/receipt/${bookingId}`, { credentials: "include" }).catch(() => null),
+        fetch(`${backendUrl}/bookings/${bookingId}`, { credentials: "include", headers: { "Authorization": `Bearer ${token}` } }),
+        fetch(`${backendUrl}/payments/receipt/${bookingId}`, { credentials: "include", headers: { "Authorization": `Bearer ${token}` } }).catch(() => null),
       ]);
 
       const bookingData = await bookingRes.json();
@@ -115,6 +122,9 @@ export default function PaymentVerifyClient() {
         if (bookingData.data.room) {
           const roomRes = await fetch(`${backendUrl}/room/${bookingData.data.room}`, {
             credentials: "include",
+            headers: {
+              "Authorization": `Bearer ${token}`
+            }
           });
           const roomData = await roomRes.json();
           if (roomData.success) setRoom(roomData.data);

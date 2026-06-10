@@ -66,9 +66,14 @@ export default function PaymentVerifyPage() {
     let timeout: NodeJS.Timeout
 
     const checkStatus = async () => {
+          const token = localStorage.getItem("token");
+
       try {
         const res = await fetch(`${backendUrl}/payments/mpesa/status/${transactionId}`, {
           credentials: "include",
+          headers: {
+            "Authorization": `Bearer ${token}`
+          }
         })
         const data = await res.json()
 
@@ -109,6 +114,8 @@ export default function PaymentVerifyPage() {
   const fetchBookingDetails = async () => {
     if (!bookingId) return
     try {
+          const token = localStorage.getItem("token");
+
       const [bookingRes, receiptRes] = await Promise.all([
         fetch(`${backendUrl}/bookings/${bookingId}`, { credentials: "include" }),
         fetch(`${backendUrl}/payments/receipt/${bookingId}`, { credentials: "include" }).catch(() => null),
@@ -121,6 +128,9 @@ export default function PaymentVerifyPage() {
         if (bookingData.data.room) {
           const roomRes = await fetch(`${backendUrl}/room/${bookingData.data.room}`, {
             credentials: "include",
+            headers: {
+              "Authorization": `Bearer ${token}`
+            }
           })
           const roomData = await roomRes.json()
           if (roomData.success) setRoom(roomData.data)
