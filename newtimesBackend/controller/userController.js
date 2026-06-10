@@ -48,7 +48,7 @@ export const signIn = async (req, res) => {
             httpOnly: true,
             secure: isProd,
             sameSite: isProd ? "none" : "lax",
-            path: "/",
+            path:"havenhotel-1.onrender.com",
             maxAge: 2 * 24 * 60 * 60 * 1000,
         };
 
@@ -182,7 +182,6 @@ export const getAllUsers = async(req,res)=> {
 
     }
 }
-
 export const getAdminStats = async (req, res) => {
   try {
     const totalBookings = await Booking.countDocuments();
