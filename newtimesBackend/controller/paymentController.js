@@ -24,9 +24,20 @@ const {
   OWNER_EMAIL,
 } = process.env;
 
-const BASE_URL = MPESA_ENV === "production"
+// 🔥 FIX: Always use sandbox for testing until you go live
+// Daraja sandbox credentials ONLY work with sandbox URL
+const IS_PRODUCTION = MPESA_ENV === "production";
+const BASE_URL = IS_PRODUCTION
   ? "https://api.safaricom.co.ke"
   : "https://sandbox.safaricom.co.ke";
+
+console.log("[MPESA CONFIG] Environment:", MPESA_ENV || "NOT SET (defaulting to sandbox)");
+console.log("[MPESA CONFIG] Base URL:", BASE_URL);
+console.log("[MPESA CONFIG] Shortcode:", MPESA_SHORTCODE ? "SET" : "MISSING");
+console.log("[MPESA CONFIG] Consumer Key:", MPESA_CONSUMER_KEY ? `SET (${MPESA_CONSUMER_KEY.slice(0, 8)}...)` : "MISSING");
+console.log("[MPESA CONFIG] Consumer Secret:", MPESA_CONSUMER_SECRET ? `SET (${MPESA_CONSUMER_SECRET.slice(0, 8)}...)` : "MISSING");
+console.log("[MPESA CONFIG] Passkey:", MPESA_PASSKEY ? "SET" : "MISSING");
+console.log("[MPESA CONFIG] Callback URL:", CALLBACK_URL || "MISSING");
 
 // ==================== HELPERS ====================
 const sanitize = (input) => validator.escape(String(input).trim());
@@ -34,25 +45,83 @@ const sanitize = (input) => validator.escape(String(input).trim());
 let cachedToken = null;
 let tokenExpiry = null;
 
+/**
+ * 🔥 BULLETPROOF M-Pesa Token Generator
+ * Handles both sandbox and production environments
+ */
 const getMpesaToken = async () => {
   const now = Date.now();
-  if (cachedToken && tokenExpiry && now < tokenExpiry) return cachedToken;
+
+  // Return cached token if still valid
+  if (cachedToken && tokenExpiry && now < tokenExpiry) {
+    console.log("[MPESA] Using cached token");
+    return cachedToken;
+  }
+
+  // Validate credentials exist
+  if (!MPESA_CONSUMER_KEY || !MPESA_CONSUMER_SECRET) {
+    throw new Error("MPESA_CONSUMER_KEY and MPESA_CONSUMER_SECRET must be set in .env");
+  }
 
   const auth = Buffer.from(`${MPESA_CONSUMER_KEY}:${MPESA_CONSUMER_SECRET}`).toString("base64");
-  const { data } = await axios.get(`${BASE_URL}/oauth/v1/generate?grant_type=client_credentials`, {
-    headers: { Authorization: `Basic ${auth}` },
-  });
+  const url = `${BASE_URL}/oauth/v1/generate?grant_type=client_credentials`;
 
-  cachedToken = data.access_token;
-  tokenExpiry = now + 3500 * 1000;
-  return cachedToken;
+  console.log("[MPESA] Requesting token from:", url);
+  console.log("[MPESA] Auth header (first 40 chars):", `Basic ${auth.slice(0, 40)}...`);
+
+  try {
+    const { data } = await axios.get(url, {
+      headers: {
+        Authorization: `Basic ${auth}`,
+      },
+      timeout: 15000,
+    });
+
+    if (!data.access_token) {
+      throw new Error("M-Pesa returned empty access_token");
+    }
+
+    cachedToken = data.access_token;
+    // Refresh 5 minutes before expiry
+    tokenExpiry = now + ((data.expires_in || 3599) - 300) * 1000;
+
+    console.log("[MPESA] Token received successfully, expires in:", data.expires_in, "seconds");
+    return cachedToken;
+
+  } catch (err) {
+    console.error("[MPESA TOKEN ERROR DETAILS]:");
+    console.error("  URL:", url);
+    console.error("  Status:", err.response?.status);
+    console.error("  Status Text:", err.response?.statusText);
+    console.error("  Response Data:", JSON.stringify(err.response?.data, null, 2));
+    console.error("  Error Code:", err.code);
+    console.error("  Error Message:", err.message);
+
+    // Provide specific error messages
+    if (err.response?.status === 400) {
+      throw new Error(
+        `Invalid M-Pesa credentials (400). Ensure:
+        1. You're using the correct environment (${IS_PRODUCTION ? "production" : "sandbox"})
+        2. Consumer Key and Secret match your ${IS_PRODUCTION ? "live" : "sandbox"} app on Daraja portal
+        3. Your app is approved for the Lipa na M-Pesa Online API product`
+      );
+    }
+    if (err.response?.status === 401) {
+      throw new Error("M-Pesa authentication failed (401). Consumer Key/Secret are invalid.");
+    }
+    if (err.code === "ECONNREFUSED" || err.code === "ENOTFOUND") {
+      throw new Error(`Cannot connect to M-Pesa API at ${BASE_URL}. Check your internet connection.`);
+    }
+
+    throw new Error(`M-Pesa token request failed: ${err.message}`);
+  }
 };
+
 const generateTxId = () => `TXN-${Date.now()}-${Math.random().toString(36).slice(2, 10).toUpperCase()}`;
 
-// ==================== EMAIL RECEIPT (with fallback) ====================
+// ==================== EMAIL RECEIPT ====================
 const sendBookingReceipt = async (emails, name, amount, transactionId, bookingId, roomDetails, status = "success") => {
   try {
-    // Skip if no transporter configured
     if (!transporter || !SENDER_EMAIL) {
       console.log("[EMAIL SKIP] No email transporter configured");
       return false;
@@ -64,7 +133,6 @@ const sendBookingReceipt = async (emails, name, amount, transactionId, bookingId
     });
     const qrDataUrl = qrCanvas.toDataURL();
 
-    // PDF
     const pdfBuffer = await new Promise((resolve, reject) => {
       const doc = new PDFDocument({ size: "A4", margin: 0 });
       const buffers = [];
@@ -147,9 +215,7 @@ const sendBookingReceipt = async (emails, name, amount, transactionId, bookingId
       doc.end();
     });
 
-    // HTML Email
-    const htmlContent = `
-      <!DOCTYPE html>
+    const htmlContent = `<!DOCTYPE html>
       <html>
       <head>
         <meta charset="utf-8">
@@ -225,8 +291,7 @@ const sendBookingReceipt = async (emails, name, amount, transactionId, bookingId
           </div>
         </div>
       </body>
-      </html>
-    `;
+      </html>`;
 
     await transporter.sendMail({
       from: `"Newtimes Hotel ✦" <${SENDER_EMAIL}>`,
@@ -244,29 +309,79 @@ const sendBookingReceipt = async (emails, name, amount, transactionId, bookingId
     return true;
   } catch (err) {
     console.error("[EMAIL ERROR - NON BLOCKING]", err.message);
-    return false; // Don't break payment flow if email fails
+    return false;
+  }
+};
+
+// ==================== DEBUG ROUTE ====================
+export const debugMpesaConfig = async (req, res) => {
+  try {
+    // Try to get a token to verify credentials
+    let tokenTest = { success: false, error: null };
+    try {
+      const auth = Buffer.from(`${MPESA_CONSUMER_KEY}:${MPESA_CONSUMER_SECRET}`).toString("base64");
+      const { data } = await axios.get(
+        `${BASE_URL}/oauth/v1/generate?grant_type=client_credentials`,
+        { headers: { Authorization: `Basic ${auth}` }, timeout: 10000 }
+      );
+      tokenTest = { success: true, tokenPreview: data.access_token?.slice(0, 20) + "..." };
+    } catch (err) {
+      tokenTest = {
+        success: false,
+        status: err.response?.status,
+        data: err.response?.data,
+        message: err.message,
+      };
+    }
+
+    res.json({
+      env: {
+        MPESA_ENV: MPESA_ENV || "NOT SET",
+        BASE_URL,
+        IS_PRODUCTION,
+        SHORTCODE_SET: !!MPESA_SHORTCODE,
+        SHORTCODE_VALUE: MPESA_SHORTCODE ? `${MPESA_SHORTCODE.slice(0, 4)}...` : null,
+        KEY_SET: !!MPESA_CONSUMER_KEY,
+        KEY_PREVIEW: MPESA_CONSUMER_KEY ? `${MPESA_CONSUMER_KEY.slice(0, 10)}...` : null,
+        SECRET_SET: !!MPESA_CONSUMER_SECRET,
+        SECRET_PREVIEW: MPESA_CONSUMER_SECRET ? `${MPESA_CONSUMER_SECRET.slice(0, 10)}...` : null,
+        PASSKEY_SET: !!MPESA_PASSKEY,
+        CALLBACK_SET: !!CALLBACK_URL,
+        CALLBACK_URL: CALLBACK_URL || null,
+      },
+      tokenTest,
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
 };
 
 // ==================== CONTROLLERS ====================
 
 /**
- * @desc   Initiate M-Pesa STK Push for hotel booking
+ * @desc   Initiate M-Pesa STK Push
  * @route  POST /api/payments/mpesa/pay
  */
 export const initiateMpesaPayment = async (req, res) => {
   try {
-    let { phone, amount, bookingId } = req.body;
+    let { phone, amount, bookingId, description } = req.body;
     phone = sanitize(phone);
     amount = Number(amount);
 
-    // Validate env vars first
-    if (!MPESA_CONSUMER_KEY || !MPESA_CONSUMER_SECRET || !MPESA_SHORTCODE || !MPESA_PASSKEY || !CALLBACK_URL) {
+    // Validate env vars
+    if (!MPESA_CONSUMER_KEY || !MPESA_CONSUMER_SECRET || !MPESA_SHORTCODE || !MPESA_PASSKEY) {
       console.error("[MPESA CONFIG ERROR] Missing environment variables");
-      return res.status(500).json({ 
-        success: false, 
+      return res.status(500).json({
+        success: false,
         message: "M-Pesa not configured. Contact admin.",
-        debug: process.env.NODE_ENV === "development" ? "Missing MPESA_* env vars" : undefined
+        debug: process.env.NODE_ENV === "development" ? {
+          missing: [
+            !MPESA_CONSUMER_KEY && "MPESA_CONSUMER_KEY",
+            !MPESA_CONSUMER_SECRET && "MPESA_CONSUMER_SECRET",
+            !MPESA_SHORTCODE && "MPESA_SHORTCODE",
+            !MPESA_PASSKEY && "MPESA_PASSKEY",
+          ].filter(Boolean),
+        } : undefined,
       });
     }
 
@@ -278,11 +393,11 @@ export const initiateMpesaPayment = async (req, res) => {
     let cleanPhone = phone.replace(/\s/g, "");
     if (cleanPhone.startsWith("0")) cleanPhone = "254" + cleanPhone.slice(1);
     if (cleanPhone.startsWith("+")) cleanPhone = cleanPhone.slice(1);
-    
+
     if (!/^(2547|2541|2540)\d{8}$/.test(cleanPhone)) {
-      return res.status(400).json({ 
-        success: false, 
-        message: "Invalid Kenyan phone number. Use format: 07XX XXX XXX or 2547XX XXX XXX" 
+      return res.status(400).json({
+        success: false,
+        message: "Invalid Kenyan phone number. Use format: 07XX XXX XXX or 2547XX XXX XXX",
       });
     }
 
@@ -293,9 +408,15 @@ export const initiateMpesaPayment = async (req, res) => {
     if (!user) return res.status(404).json({ success: false, message: "User not found" });
 
     // Prevent duplicate pending payments
-    const existing = await Payment.findOne({ booking: bookingId, status: { $in: ["pending", "processing"] } });
+    const existing = await Payment.findOne({
+      booking: bookingId,
+      status: { $in: ["pending", "processing"] },
+    });
     if (existing) {
-      return res.status(429).json({ success: false, message: "Payment already in progress. Complete or cancel it first." });
+      return res.status(429).json({
+        success: false,
+        message: "Payment already in progress. Complete or cancel it first.",
+      });
     }
 
     // Get M-Pesa token
@@ -304,21 +425,23 @@ export const initiateMpesaPayment = async (req, res) => {
       token = await getMpesaToken();
     } catch (tokenErr) {
       console.error("[MPESA TOKEN ERROR]", tokenErr.message);
-      return res.status(500).json({ success: false, message: "Failed to connect to M-Pesa. Try again." });
+      return res.status(500).json({
+        success: false,
+        message: tokenErr.message,
+        ...(process.env.NODE_ENV === "development" && { debug: tokenErr.stack }),
+      });
     }
 
-    const timestamp = new Date().toISOString().replace(/[-T:]/g, "").slice(0, 14);
+    const timestamp = new Date().toISOString().replace(/[-T:.Z]/g, "").slice(0, 14);
     const password = Buffer.from(`${MPESA_SHORTCODE}${MPESA_PASSKEY}${timestamp}`).toString("base64");
-
-    // For sandbox, PartyB should be your shortcode. For production, use your paybill
-    const partyB = MPESA_SHORTCODE;
 
     console.log("[MPESA STK REQUEST]", {
       url: `${BASE_URL}/mpesa/stkpush/v1/processrequest`,
       shortcode: MPESA_SHORTCODE,
       phone: cleanPhone,
-      amount,
-      callback: CALLBACK_URL,
+      amount: Math.ceil(amount),
+      timestamp,
+      callback: CALLBACK_URL || "NOT SET",
     });
 
     let mpesaResponse;
@@ -330,42 +453,50 @@ export const initiateMpesaPayment = async (req, res) => {
           Password: password,
           Timestamp: timestamp,
           TransactionType: "CustomerPayBillOnline",
-          Amount: Math.ceil(amount), // M-Pesa expects integer
+          Amount: Math.ceil(amount),
           PartyA: cleanPhone,
-          PartyB: partyB,
+          PartyB: MPESA_SHORTCODE,
           PhoneNumber: cleanPhone,
-          CallBackURL: CALLBACK_URL,
+          CallBackURL: CALLBACK_URL || "https://example.com/callback",
           AccountReference: `Booking-${bookingId.toString().slice(-6)}`,
-          TransactionDesc: "Hotel Room Booking",
+          TransactionDesc: description || "Hotel Room Booking",
         },
-        { 
-          headers: { 
+        {
+          headers: {
             Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json"
+            "Content-Type": "application/json",
           },
-          timeout: 30000 
+          timeout: 30000,
         }
       );
       mpesaResponse = data;
     } catch (apiErr) {
       console.error("[MPESA API ERROR]", {
         status: apiErr.response?.status,
+        statusText: apiErr.response?.statusText,
         data: apiErr.response?.data,
         message: apiErr.message,
       });
-      
+
       const safError = apiErr.response?.data;
       let userMessage = "M-Pesa request failed. Please try again.";
-      
+
       if (safError?.errorCode === "400.002.02") userMessage = "Invalid phone number format";
       else if (safError?.errorCode === "500.003.02") userMessage = "M-Pesa system busy. Try again shortly.";
       else if (safError?.errorMessage?.includes("Invalid Access Token")) userMessage = "Authentication failed. Contact admin.";
-      else if (apiErr.response?.status === 400) userMessage = "Invalid request. Check your phone number and amount.";
+      else if (apiErr.response?.status === 400) userMessage = "Invalid request. Check your credentials and try again.";
+      else if (apiErr.response?.status === 401) userMessage = "M-Pesa authentication failed. Invalid credentials.";
 
-      return res.status(500).json({ 
-        success: false, 
+      return res.status(500).json({
+        success: false,
         message: userMessage,
-        ...(process.env.NODE_ENV === "development" && { debug: safError || apiErr.message })
+        ...(process.env.NODE_ENV === "development" && {
+          debug: {
+            safError,
+            status: apiErr.response?.status,
+            url: `${BASE_URL}/mpesa/stkpush/v1/processrequest`,
+          },
+        }),
       });
     }
 
@@ -373,7 +504,11 @@ export const initiateMpesaPayment = async (req, res) => {
 
     if (!checkoutRequestId) {
       console.error("[MPESA NO CHECKOUT ID]", mpesaResponse);
-      return res.status(500).json({ success: false, message: "M-Pesa did not return a transaction ID" });
+      return res.status(500).json({
+        success: false,
+        message: "M-Pesa did not return a transaction ID",
+        debug: process.env.NODE_ENV === "development" ? mpesaResponse : undefined,
+      });
     }
 
     // Save payment record
@@ -403,14 +538,12 @@ export const initiateMpesaPayment = async (req, res) => {
 
   } catch (error) {
     console.error("[MPESA STK UNEXPECTED ERROR]", error);
-    return res.status(500).json({ 
-      success: false, 
+    return res.status(500).json({
+      success: false,
       message: "Something went wrong. Please try again.",
-      ...(process.env.NODE_ENV === "development" && { debug: error.message })
+      ...(process.env.NODE_ENV === "development" && { debug: error.message }),
     });
   }
-   console.log("[MPESA CONFIG] Environment:", MPESA_ENV, "| Base URL:", BASE_URL);
-
 };
 
 /**
@@ -468,18 +601,17 @@ export const mpesaWebhook = async (req, res) => {
       await booking.save();
       console.log("[WEBHOOK] Booking updated:", booking._id, "->", booking.status);
 
-      // 🔥 LOCK ROOM ONLY WHEN PAYMENT SUCCEEDS
       if (status === "success") {
         await Room.findByIdAndUpdate(booking.roomId, { status: "booked" });
         console.log("[WEBHOOK] Room locked:", booking.roomId);
       }
     }
 
-    // Send receipt on success (non-blocking)
+    // Send receipt on success
     if (status === "success") {
       try {
         const user = await User.findById(payment.user);
-        const room = await Room.findById(booking?.roomId); // ✅ fixed: booking uses roomId not room
+        const room = await Room.findById(booking?.roomId);
         if (user && booking) {
           const receiptSent = await sendBookingReceipt(
             [user.email, OWNER_EMAIL].filter(Boolean),
@@ -521,8 +653,13 @@ export const mpesaWebhook = async (req, res) => {
  */
 export const cancelMpesaPayment = async (req, res) => {
   try {
-    const payment = await Payment.findOne({ mpesaCheckoutRequestId: req.params.transactionId, status: "pending" });
-    if (!payment) return res.status(404).json({ success: false, message: "Payment not found or already processed" });
+    const payment = await Payment.findOne({
+      mpesaCheckoutRequestId: req.params.transactionId,
+      status: "pending",
+    });
+    if (!payment) {
+      return res.status(404).json({ success: false, message: "Payment not found or already processed" });
+    }
 
     payment.status = "cancelled";
     await payment.save();
@@ -622,7 +759,7 @@ export const getPaymentsByBooking = async (req, res) => {
 };
 
 /**
- * @desc   Admin: manual status update (for bank transfers)
+ * @desc   Admin: manual status update
  * @route  PATCH /api/payments/:id/status
  */
 export const updatePaymentStatus = async (req, res) => {
@@ -633,7 +770,6 @@ export const updatePaymentStatus = async (req, res) => {
 
     if (status === "success") {
       await Booking.findByIdAndUpdate(payment.booking, { paymentStatus: "paid", status: "confirmed" });
-      // 🔥 ADD THIS
       const booking = await Booking.findById(payment.booking);
       if (booking) await Room.findByIdAndUpdate(booking.roomId, { status: "booked" });
     }
@@ -663,20 +799,14 @@ export const getTotalRevenue = async (req, res) => {
  * @desc   Get all payments (admin)
  * @route  GET /api/payments/all-payments
  */
-
- 
 export const getAllPayments = async (req, res) => {
   try {
-    const payments = await Payment.find()
-      .sort({ createdAt: -1 })
-      .lean();
+    const payments = await Payment.find().sort({ createdAt: -1 }).lean();
 
-    // Safely populate manually to avoid any ref mismatch crashes
     const populated = await Promise.all(
       payments.map(async (p) => {
         let enriched = { ...p };
 
-        // Fetch user safely
         if (p.user) {
           try {
             const user = await User.findById(p.user).select("name email phone").lean();
@@ -684,7 +814,6 @@ export const getAllPayments = async (req, res) => {
           } catch (e) { /* ignore */ }
         }
 
-        // Fetch booking safely
         if (p.booking) {
           try {
             const booking = await Booking.findById(p.booking)
@@ -694,7 +823,6 @@ export const getAllPayments = async (req, res) => {
           } catch (e) { /* ignore */ }
         }
 
-        // Fallback customer name from booking if payment snapshot is empty
         if (!enriched.customerName && enriched.booking) {
           enriched.customerName = `${enriched.booking.firstName || ""} ${enriched.booking.lastName || ""}`.trim();
         }
