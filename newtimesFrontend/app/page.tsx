@@ -13,6 +13,8 @@ import FeaturedDestinations from "@/components/TrendingDestinations";
 import RoomsPage from "@/components/RoomCard";
 import Hero from "@/components/Hero";
 import Divider from "@/components/Divider";
+import ContactSection from "@/components/ContactSection";
+import RoomsBanner from "@/components/RoomsBanner"
 
 const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8080/api";
 

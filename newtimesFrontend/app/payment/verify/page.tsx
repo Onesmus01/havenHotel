@@ -320,7 +320,7 @@ export default function PaymentVerifyPage() {
                 Check Again
               </Button>
               <Button variant="outline" className="w-full h-11 rounded-xl" asChild>
-                <Link href="/my-bookings">Go to My Bookings</Link>
+                <Link href="/mybookings">Go to My Bookings</Link>
               </Button>
             </div>
             <p className="text-xs text-muted-foreground text-center">
@@ -597,7 +597,7 @@ export default function PaymentVerifyPage() {
                     className="w-full h-12 rounded-xl bg-gradient-to-r from-amber-500 to-orange-600 text-white font-semibold shadow-lg"
                     asChild
                   >
-                    <Link href="/my-bookings" className="flex items-center justify-center gap-2">
+                    <Link href="/mybookings" className="flex items-center justify-center gap-2">
                       <CalendarDays className="w-4 h-4" />
                       My Bookings
                       <ArrowRight className="w-4 h-4" />

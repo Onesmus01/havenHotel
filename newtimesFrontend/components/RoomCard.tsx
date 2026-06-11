@@ -16,6 +16,7 @@ import {
   Router,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
+import RoomsBanner from "./RoomsBanner";
 
 const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8080/api";
 
@@ -247,7 +248,7 @@ export default function RoomsPage() {
 
   return (
     <section id="rooms" className="bg-[#faf9f7] py-8 lg:py-12">
-      <div className="mx-auto max-w-[1280px] px-4 sm:px-6 lg:px-8">
+      <div className="mx-auto max-w-[1280px] px-4 sm:px-6 lg:px-8 ">
         {/* Header */}
         <motion.div
           initial={{ opacity: 0, y: 16 }}
@@ -337,6 +338,7 @@ export default function RoomsPage() {
             ))}
           </AnimatePresence>
         </div>
+        <RoomsBanner />
       </div>
     </section>
   );

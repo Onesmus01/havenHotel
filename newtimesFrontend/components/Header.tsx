@@ -74,7 +74,7 @@ export default function Header() {
     { href: "/", label: "Home" },
     { href: "/rooms", label: "Rooms" },
     { href: "/amenities", label: "Amenities" },
-    { href: "/contact", label: "Contact" },
+    { href: "/contactPage", label: "Contact" },
   ]
 
   return (
@@ -220,7 +220,7 @@ export default function Header() {
             <>
               {user.role === "admin" && (
                 <Link 
-                  href="/admin/dashboard" 
+                  href="/admindashboard/dashboard" 
                   onClick={closeMobileMenu}
                   className="block py-2 px-2 rounded-md hover:bg-gray-100 transition"
                 >
