@@ -148,10 +148,10 @@ export default function HomePage() {
       <RoomsPage  />
 
       {/* Features Section */}
-      <section className="py-20 bg-muted/30">
+      <section className=" bg-muted/30">
         <div className="container mx-auto px-4">
           <div className="text-center mb-16">
-            <h2 className="text-4xl font-bold mb-4 text-foreground">World-Class Amenities</h2>
+            <h2 className=" font-bold mb-4 text-2xl sm:text-xl md:text-4xl lg:text-5xl font-bold tracking-tight text-foreground leading-tight">World-Class Amenities</h2>
             <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
               Every detail designed for your comfort and convenience
             </p>
