@@ -5,6 +5,13 @@ const paymentSchema = new mongoose.Schema(
     user: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
     booking: { type: mongoose.Schema.Types.ObjectId, ref: "Booking", required: true, index: true },
 
+    // Payment type: distinguishes original booking from extension/upgrade payments
+    paymentType: {
+      type: String,
+      enum: ["booking", "extension", "upgrade", "other"],
+      default: "booking",
+    },
+
     // Guest snapshot (in case user changes profile later)
     customerName: { type: String, trim: true },
     customerEmail: { type: String, trim: true, lowercase: true },
@@ -59,6 +66,7 @@ const paymentSchema = new mongoose.Schema(
 
 paymentSchema.index({ createdAt: -1 });
 paymentSchema.index({ status: 1, method: 1 });
+paymentSchema.index({ booking: 1, paymentType: 1, status: 1, createdAt: -1 });
 
 const Payment = mongoose.model("Payment", paymentSchema);
 export default Payment;
