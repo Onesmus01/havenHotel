@@ -7,6 +7,8 @@ import { Toaster } from "react-hot-toast";
 import Header from "@/components/Header";
 import FloatingContact from "@/components/FloatingContact"; 
 import Footer from "@/components/Footer";
+import ScrollToTopOnBack from "@/components/ScrollToTopOnBack";
+
 
 import "./globals.css";
 
@@ -27,6 +29,7 @@ export default function RootLayout({
         <ContextProvider>
           <Header />
           {children}
+          <ScrollToTopOnBack />
           <FloatingContact 
           phone="+254713706034"
           whatsapp="+254713706034"
