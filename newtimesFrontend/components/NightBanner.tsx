@@ -104,7 +104,7 @@ export default function NightBanner() {
               onClick={() => router.push("/rooms")}
               className="group flex items-center gap-3 rounded-none bg-white px-8 py-4 text-sm font-semibold text-stone-900 transition-all duration-300 hover:bg-stone-100 hover:pl-10 hover:pr-6"
             >
-              <button className="h-4 w-4 text-amber-500" />
+              <Sparkles className="h-4 w-4 text-amber-500" />
               Explore Rooms
               <ArrowRight className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-1" />
             </button>
