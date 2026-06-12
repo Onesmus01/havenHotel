@@ -55,7 +55,7 @@ export default function Hero({ user }) {
   return (
     <section
       ref={ref}
-      className="relative min-h-scree overflow-hidden bg-[#faf9f7] lg:min-h-[90vh]"
+      className="relative min-h-scree overflow-hidden bg-neutral-50 lg:min-h-[90vh]"
     >
       {/* Top Announcement Bar */}
       <motion.div
@@ -71,7 +71,7 @@ export default function Hero({ user }) {
         </p>
       </motion.div>
 
-      <div className="mx-auto flex min-h-[calc(100vh-48px)] max-w-[1440px] flex-col lg:flex-row lg:items-center lg:min-h-[calc(90vh-48px)]">
+      <div className="mx-auto flex min-h-[calc(100vh-48px)] max-w-[1920px] flex-col lg:flex-row lg:items-center lg:min-h-[calc(90vh-48px)]">
         {/* LEFT — Image Frame */}
         <motion.div
           style={{ y }}
@@ -125,7 +125,7 @@ export default function Hero({ user }) {
                 <div className="flex items-center gap-2">
                   <Waves className="h-4 w-4 text-stone-500" />
                   <span className="text-xs font-medium text-stone-700">
-                    Ocean View
+                    Road view
                   </span>
                 </div>
               </div>
@@ -146,7 +146,7 @@ export default function Hero({ user }) {
         {/* RIGHT — Content */}
         <motion.div
           style={{ opacity }}
-          className="flex w-full flex-col justify-center px-6 pb-16 lg:w-[42%] lg:px-14 lg:pb-0 xl:px-20"
+          className="flex w-full flex-col justify-center px-6 pb-2 lg:w-[42%] lg:px-14 lg:pb-0 xl:px-20"
         >
           {/* Trust Row */}
           <motion.div

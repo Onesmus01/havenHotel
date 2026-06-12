@@ -15,6 +15,7 @@ import Hero from "@/components/Hero";
 import Divider from "@/components/Divider";
 import ContactSection from "@/components/ContactSection";
 import RoomsBanner from "@/components/RoomsBanner"
+import NightBanner from "@/components/NightBanner";
 
 const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8080/api";
 
@@ -135,7 +136,7 @@ export default function HomePage() {
     <div className="min-h-screen bg-background">
       <Hero user={user} />
 
-      <Divider variant="shortAmber" className="my-8" />
+      <Divider variant="shortAmber" className="my-4" />
 
 
 
@@ -146,6 +147,7 @@ export default function HomePage() {
 
       {/* Room Preview Section */}
       <RoomsPage  />
+      <RoomsBanner />
 
       {/* Features Section */}
       <section className=" bg-muted/30">
@@ -156,6 +158,7 @@ export default function HomePage() {
               Every detail designed for your comfort and convenience
             </p>
           </div>
+
 
           <div className="grid grid-cols-3 md:grid-cols-3 lg:grid-cols-6 gap-2">
             {features.map((feature, index) => (
@@ -169,6 +172,9 @@ export default function HomePage() {
           </div>
         </div>
       </section>
+
+      <NightBanner />
+
 
 
       {/* Testimonials Section */}
