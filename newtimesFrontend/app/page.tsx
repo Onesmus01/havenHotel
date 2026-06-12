@@ -150,14 +150,14 @@ export default function HomePage() {
       {/* Features Section */}
       <section className=" bg-muted/30">
         <div className="container mx-auto px-4">
-          <div className="text-center mb-16">
+          <div className="text-center mb-1">
             <h2 className=" font-bold mb-4 text-2xl sm:text-xl md:text-4xl lg:text-5xl font-bold tracking-tight text-foreground leading-tight">World-Class Amenities</h2>
             <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
               Every detail designed for your comfort and convenience
             </p>
           </div>
 
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-8">
+          <div className="grid grid-cols-3 md:grid-cols-3 lg:grid-cols-6 gap-2">
             {features.map((feature, index) => (
               <div key={index} className="text-center group">
                 <div className="w-16 h-16 mx-auto mb-4 bg-gradient-to-br from-amber-500 to-orange-600 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
@@ -242,77 +242,6 @@ export default function HomePage() {
           </div>
         </div>
       </section>
-
-      {/* Footer */}
-      <footer className="bg-gray-900 text-white py-16">
-        <div className="container mx-auto px-4">
-          <div className="grid md:grid-cols-4 gap-8">
-            <div>
-              <div className="flex items-center space-x-2 mb-4">
-                <div className="w-8 h-8 bg-gradient-to-br from-amber-500 to-orange-600 rounded-lg flex items-center justify-center">
-                  <span className="text-white font-bold text-sm">LH</span>
-                </div>
-                <span className="text-xl font-bold">Luxury Haven</span>
-              </div>
-              <p className="text-gray-400 mb-4">Experience unparalleled luxury and comfort in the heart of the city.</p>
-              <div className="flex items-center space-x-1 text-amber-400">
-                <MapPin className="w-4 h-4" />
-                <span className="text-sm">123 Luxury Avenue, City Center</span>
-              </div>
-            </div>
-
-            <div>
-              <h3 className="font-bold mb-4">Quick Links</h3>
-              <ul className="space-y-2 text-gray-400">
-                <li>
-                  <Link href="/rooms" className="hover:text-white transition-colors">
-                    Rooms & Suites
-                  </Link>
-                </li>
-                <li>
-                  <Link href="/amenities" className="hover:text-white transition-colors">
-                    Amenities
-                  </Link>
-                </li>
-                <li>
-                  <Link href="/dining" className="hover:text-white transition-colors">
-                    Dining
-                  </Link>
-                </li>
-                <li>
-                  <Link href="/events" className="hover:text-white transition-colors">
-                    Events
-                  </Link>
-                </li>
-              </ul>
-            </div>
-
-            <div>
-              <h3 className="font-bold mb-4">Services</h3>
-              <ul className="space-y-2 text-gray-400">
-                <li>24/7 Concierge</li>
-                <li>Airport Transfer</li>
-                <li>Spa & Wellness</li>
-                <li>Business Center</li>
-              </ul>
-            </div>
-
-            <div>
-              <h3 className="font-bold mb-4">Contact Info</h3>
-              <ul className="space-y-2 text-gray-400">
-                <li>Phone: +1 (555) 123-4567</li>
-                <li>Email: info@newtimesluxuryhaven.com</li>
-                <li>Check-in: 3:00 PM</li>
-                <li>Check-out: 11:00 AM</li>
-              </ul>
-            </div>
-          </div>
-
-          <div className="border-t border-gray-800 mt-12 pt-8 text-center text-gray-400">
-            <p>&copy; 2024 Luxury Haven Hotel. All rights reserved.</p>
-          </div>
-        </div>
-      </footer>
     </div>
   )
 }

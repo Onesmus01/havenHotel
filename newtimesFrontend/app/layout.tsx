@@ -5,7 +5,8 @@ import { Analytics } from "@vercel/analytics/next";
 import { ContextProvider } from "@/context/userContext"; 
 import { Toaster } from "react-hot-toast";
 import Header from "@/components/Header";
-import FloatingContact from "@/components/FloatingContact";
+import FloatingContact from "@/components/FloatingContact"; 
+import Footer from "@/components/Footer";
 
 import "./globals.css";
 
@@ -32,6 +33,7 @@ export default function RootLayout({
           whatsappMessage="Hi, I'm interested in booking a room at Newtimes Hotel."
         />
           <Toaster />
+          <Footer />
         </ContextProvider>
         <Analytics />
         

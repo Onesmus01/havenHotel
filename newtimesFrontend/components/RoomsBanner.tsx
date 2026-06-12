@@ -6,7 +6,7 @@ import Link from "next/link"
 export default function RoomsBanner() {
   return (
     <Link href="/rooms" className="block group">
-      <div className="relative overflow-hidden rounded-xl bg-gradient-to-r from-[#1f1913] via-[#3d3124] to-[#5c4a36] shadow-lg hover:shadow-xl transition-all duration-500 hover:-translate-y-0.5">
+      <div className="relative overflow-hidden bg-gradient-to-r from-[#1f1913] via-[#3d3124] to-[#5c4a36] shadow-lg hover:shadow-xl transition-all duration-500 hover:-translate-y-0.5">
         {/* Decorative pattern */}
         <div 
           className="absolute inset-0 opacity-[0.04]"

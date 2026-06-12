@@ -63,7 +63,119 @@ function getStatusConfig(status) {
   }
 }
 
-function RoomCard({ room, idx, isFav, toggleFav }) {
+/* ─── Sky Background Component ─── */
+function SkyBackground() {
+  const [stars, setStars] = useState([]);
+
+  useEffect(() => {
+    const generated = [];
+    for (let i = 0; i < 120; i++) {
+      generated.push({
+        id: i,
+        left: Math.random() * 100,
+        top: Math.random() * 100,
+        size: Math.random() * 2.5 + 0.5,
+        delay: Math.random() * 5,
+        duration: Math.random() * 3 + 2,
+        opacity: Math.random() * 0.7 + 0.3,
+      });
+    }
+    setStars(generated);
+  }, []);
+
+  return (
+    <div className="absolute inset-0 overflow-hidden">
+      {/* Deep night sky gradient */}
+      <div
+        className="absolute inset-0"
+        style={{
+          background: `linear-gradient(180deg, 
+            #0a0e27 0%, 
+            #1a1f4b 25%, 
+            #2d3561 50%, 
+            #1e2749 75%, 
+            #0f1535 100%)`,
+        }}
+      />
+
+      {/* Subtle nebula clouds */}
+      <div
+        className="absolute inset-0 opacity-30"
+        style={{
+          background: `radial-gradient(ellipse at 20% 30%, rgba(100, 80, 180, 0.4) 0%, transparent 50%),
+            radial-gradient(ellipse at 80% 70%, rgba(80, 120, 200, 0.3) 0%, transparent 50%),
+            radial-gradient(ellipse at 50% 50%, rgba(60, 100, 160, 0.2) 0%, transparent 60%)`,
+        }}
+      />
+
+      {/* Twinkling stars */}
+      {stars.map((star) => (
+        <div
+          key={star.id}
+          className="absolute rounded-full bg-white"
+          style={{
+            left: `${star.left}%`,
+            top: `${star.top}%`,
+            width: `${star.size}px`,
+            height: `${star.size}px`,
+            opacity: star.opacity,
+            animation: `twinkle ${star.duration}s ease-in-out ${star.delay}s infinite alternate`,
+            boxShadow: `0 0 ${star.size * 2}px rgba(255,255,255,0.5)`,
+          }}
+        />
+      ))}
+
+      {/* Shooting star */}
+      <div
+        className="absolute h-px w-24 bg-gradient-to-r from-transparent via-white to-transparent"
+        style={{
+          top: '15%',
+          left: '-10%',
+          animation: 'shootingStar 8s linear 3s infinite',
+          opacity: 0.6,
+        }}
+      />
+      <div
+        className="absolute h-px w-16 bg-gradient-to-r from-transparent via-white to-transparent"
+        style={{
+          top: '40%',
+          left: '-10%',
+          animation: 'shootingStar 12s linear 7s infinite',
+          opacity: 0.4,
+        }}
+      />
+
+      {/* Moon glow */}
+      <div
+        className="absolute rounded-full"
+        style={{
+          top: '8%',
+          right: '12%',
+          width: '80px',
+          height: '80px',
+          background: 'radial-gradient(circle, rgba(255,250,220,0.9) 0%, rgba(255,250,220,0.3) 40%, transparent 70%)',
+          boxShadow: '0 0 60px 20px rgba(255,250,220,0.15), 0 0 120px 40px rgba(255,250,220,0.05)',
+        }}
+      />
+
+      {/* CSS keyframes via style tag */}
+      <style jsx>{`
+        @keyframes twinkle {
+          0% { opacity: 0.2; transform: scale(0.8); }
+          100% { opacity: 1; transform: scale(1.2); }
+        }
+        @keyframes shootingStar {
+          0% { transform: translateX(0) translateY(0) rotate(-15deg); opacity: 0; }
+          10% { opacity: 1; }
+          20% { transform: translateX(120vw) translateY(30vh) rotate(-15deg); opacity: 0; }
+          100% { transform: translateX(120vw) translateY(30vh) rotate(-15deg); opacity: 0; }
+        }
+      `}</style>
+    </div>
+  );
+}
+
+function RoomCard({ room, idx, isFav, toggleFav, isLastRow }) {
   const image =
     room.images[0] ||
     "https://images.unsplash.com/photo-1566073771259-6a8506099945?w=800&q=80";
@@ -80,7 +192,7 @@ function RoomCard({ room, idx, isFav, toggleFav }) {
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, scale: 0.96 }}
       transition={{ duration: 0.35, delay: idx * 0.04 }}
-      className="group relative flex h-full flex-col overflow-hidden rounded-xl border border-stone-200 bg-white shadow-md transition-all duration-300 hover:shadow-lg hover:border-stone-300"
+      className={`group relative flex h-full flex-col overflow-hidden border border-stone-200 bg-white shadow-md transition-all duration-300 hover:shadow-lg hover:border-stone-300 ${isLastRow ? 'rounded-t-xl' : 'rounded-xl'}`}
     >
       {/* Status Badge */}
       <div className={`absolute top-2 left-2 z-10 flex items-center gap-1 rounded px-2 py-1 text-[10px] font-semibold text-white shadow-md ${statusConfig.bg}`}>
@@ -256,8 +368,12 @@ export default function RoomsPage() {
   };
 
   return (
-    <section id="rooms" className="bg-[#faf9f7] py-8 lg:py-12">
-      <div className="mx-auto max-w-[1280px] px-4 sm:px-6 lg:px-8 ">
+    <section id="rooms" className="relative py-8 lg:py-12">
+      {/* Sky Background */}
+      <SkyBackground />
+
+      {/* Content overlay */}
+      <div className="relative z-10 mx-auto max-w-[1440px] px-4 sm:px-6 lg:px-8">
         {/* Header */}
         <motion.div
           initial={{ opacity: 0, y: 16 }}
@@ -268,10 +384,10 @@ export default function RoomsPage() {
         >
           <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
             <div>
-              <p className="mb-0.5 text-[11px] font-medium uppercase tracking-[0.2em] text-stone-400">
+              <p className="mb-0.5 text-[11px] font-medium uppercase tracking-[0.2em] text-stone-300">
                 {rooms.length} properties found
               </p>
-              <h2 className="font-serif text-2xl font-light italic text-stone-900 lg:text-3xl">
+              <h2 className="font-serif text-2xl font-light italic text-white lg:text-3xl">
                 Rooms & Suites
               </h2>
             </div>
@@ -279,12 +395,12 @@ export default function RoomsPage() {
             <div className="flex flex-wrap items-center gap-2">
               <button
                 onClick={fetchRooms}
-                className="flex h-8 w-8 items-center justify-center rounded-full border border-stone-200 bg-white text-stone-500 transition-colors hover:text-stone-900"
+                className="flex h-8 w-8 items-center justify-center rounded-full border border-white/20 bg-white/10 text-stone-300 backdrop-blur-sm transition-colors hover:bg-white/20 hover:text-white"
                 title="Refresh rooms"
               >
                 <RefreshCw className="h-3.5 w-3.5" />
               </button>
-              <div className="flex overflow-hidden rounded-full border border-stone-200 bg-white p-0.5">
+              <div className="flex overflow-hidden rounded-full border border-white/20 bg-white/10 p-0.5 backdrop-blur-sm">
                 {[
                   { key: "all", label: "All" },
                   { key: "available", label: "Available" },
@@ -295,8 +411,8 @@ export default function RoomsPage() {
                     onClick={() => setFilter(tab.key)}
                     className={`rounded-full px-3 py-1 text-[11px] font-medium transition-colors ${
                       filter === tab.key
-                        ? "bg-stone-900 text-white"
-                        : "text-stone-500 hover:text-stone-900"
+                        ? "bg-white/90 text-stone-900"
+                        : "text-stone-300 hover:text-white"
                     }`}
                   >
                     {tab.label}
@@ -308,12 +424,12 @@ export default function RoomsPage() {
                 <select
                   value={sort}
                   onChange={(e) => setSort(e.target.value)}
-                  className="appearance-none rounded-full border border-stone-200 bg-white py-1.5 pl-3 pr-8 text-[11px] font-medium text-stone-600 outline-none focus:border-stone-400"
+                  className="appearance-none rounded-full border border-white/20 bg-white/10 py-1.5 pl-3 pr-8 text-[11px] font-medium text-stone-300 outline-none backdrop-blur-sm focus:border-white/40"
                 >
-                  <option value="recommended">Recommended</option>
-                  <option value="price-low">Price: Low to High</option>
-                  <option value="price-high">Price: High to Low</option>
-                  <option value="rating">Top Rated</option>
+                  <option value="recommended" className="text-stone-800">Recommended</option>
+                  <option value="price-low" className="text-stone-800">Price: Low to High</option>
+                  <option value="price-high" className="text-stone-800">Price: High to Low</option>
+                  <option value="rating" className="text-stone-800">Top Rated</option>
                 </select>
                 <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 h-3 w-3 -translate-y-1/2 text-stone-400" />
               </div>
@@ -323,11 +439,11 @@ export default function RoomsPage() {
 
         {/* Loading */}
         {loading && (
-          <div className="grid auto-rows-fr gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid auto-rows-fr gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {[1, 2, 3].map((i) => (
               <div
                 key={i}
-                className="h-80 animate-pulse rounded-xl bg-stone-200"
+                className="h-80 animate-pulse rounded-xl bg-white/10 backdrop-blur-sm"
               />
             ))}
           </div>
@@ -336,22 +452,29 @@ export default function RoomsPage() {
         {/* Empty */}
         {!loading && sorted.length === 0 && (
           <div className="py-16 text-center">
-            <p className="text-sm text-stone-500">No rooms match your filters.</p>
+            <p className="text-sm text-stone-300">No rooms match your filters.</p>
           </div>
         )}
 
         {/* Grid */}
-        <div className="grid auto-rows-fr gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid auto-rows-fr gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <AnimatePresence mode="popLayout">
-            {sorted.map((room, idx) => (
-              <RoomCard
-                key={room._id}
-                room={room}
-                idx={idx}
-                isFav={favorites.has(room._id)}
-                toggleFav={toggleFav}
-              />
-            ))}
+            {sorted.map((room, idx) => {
+              const totalItems = sorted.length;
+              // Last row items: for 4-col lg, last 4 items; for 2-col sm, last 2 items
+              // We mark the last 4 items as potentially last row (covers both breakpoints)
+              const isLastRow = idx >= totalItems - 4;
+              return (
+                <RoomCard
+                  key={room._id}
+                  room={room}
+                  idx={idx}
+                  isFav={favorites.has(room._id)}
+                  toggleFav={toggleFav}
+                  isLastRow={isLastRow}
+                />
+              );
+            })}
           </AnimatePresence>
         </div>
         <RoomsBanner />

@@ -55,7 +55,7 @@ export default function Hero({ user }) {
   return (
     <section
       ref={ref}
-      className="relative min-h-screen overflow-hidden bg-[#faf9f7] lg:min-h-[90vh]"
+      className="relative min-h-scree overflow-hidden bg-[#faf9f7] lg:min-h-[90vh]"
     >
       {/* Top Announcement Bar */}
       <motion.div
