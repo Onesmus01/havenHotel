@@ -27,7 +27,7 @@ export default function NightBanner() {
   }, []);
 
   return (
-    <section className="relative w-full overflow-hidden rounded-none">
+    <section onClick={()=>router.push('/rooms')} className="relative w-full overflow-hidden rounded-none">
       {/* Background Image — Night Sky with Moon */}
       <div
         className="absolute inset-0 bg-cover bg-center bg-no-repeat"
