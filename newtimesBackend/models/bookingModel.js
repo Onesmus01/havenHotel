@@ -1,4 +1,3 @@
-// models/bookingModel.js
 import mongoose from "mongoose";
 
 const bookingSchema = new mongoose.Schema(
@@ -44,8 +43,16 @@ const bookingSchema = new mongoose.Schema(
     totalAmount: { type: Number, required: true },
 
     // Status & Payment
-    status: { type: String, enum: ["pending", "confirmed", "cancelled"], default: "pending" },
-    paymentStatus: { type: String, enum: ["pending", "paid", "failed"], default: "pending" },
+    status: { 
+      type: String, 
+      enum: ["pending", "confirmed", "cancelled","expired"], 
+      default: "pending" 
+    },
+    paymentStatus: { 
+      type: String, 
+      enum: ["pending", "paid", "failed", "pay_on_arrival", "cancelled"], 
+      default: "pending" 
+    },
   },
   { timestamps: true }
 );

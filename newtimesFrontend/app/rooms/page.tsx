@@ -1,9 +1,8 @@
 "use client";
 
-import { useState, useEffect, useMemo, useContext } from "react";
+import { useState, useEffect, useMemo, useContext, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -19,21 +18,19 @@ import {
   Users,
   Bed,
   Search,
-  Filter,
+  RotateCcw,
   MapPin,
   Ruler,
   ArrowRight,
-  RotateCcw,
   Gem,
-  Crown,
   Home,
   Sparkles,
   Mail,
   Menu,
   X,
-  CalendarCheck,
   ChevronDown,
   SlidersHorizontal,
+  RefreshCw,
 } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
@@ -62,30 +59,42 @@ export default function RoomsPage() {
   const [showFilters, setShowFilters] = useState(false);
   const [loading, setLoading] = useState(true);
   const [isVisible, setIsVisible] = useState(false);
+  const [lastUpdated, setLastUpdated] = useState(null);
 
   const { user } = useContext(Context);
 
+  const fetchRooms = useCallback(async (silent = false) => {
+    if (!silent) setLoading(true);
+    try {
+      const res = await fetch(`${backendUrl}/room/get-rooms`);
+      const data = await res.json();
+      if (data.success) {
+        const normalizedRooms = (data.data || []).map((room) => ({
+          ...room,
+          _id: room._id || room.id,
+        }));
+        setRooms(normalizedRooms);
+        setLastUpdated(new Date());
+      }
+    } catch (err) {
+      console.error("Failed to fetch rooms:", err);
+    } finally {
+      if (!silent) setLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
     setIsVisible(true);
-    const fetchRooms = async () => {
-      try {
-        const res = await fetch(`${backendUrl}/room/get-rooms`);
-        const data = await res.json();
-        if (data.success) {
-          const normalizedRooms = (data.data || []).map((room) => ({
-            ...room,
-            _id: room._id || room.id,
-          }));
-          setRooms(normalizedRooms);
-        }
-      } catch (err) {
-        console.error("Failed to fetch rooms:", err);
-      } finally {
-        setLoading(false);
-      }
-    };
     fetchRooms();
-  }, []);
+  }, [fetchRooms]);
+
+  // Auto-refresh every 30 seconds to catch status changes (rooms becoming available)
+  useEffect(() => {
+    const interval = setInterval(() => {
+      fetchRooms(true); // silent refresh
+    }, 30000);
+    return () => clearInterval(interval);
+  }, [fetchRooms]);
 
   const roomTypes = useMemo(() => ["all", ...new Set(rooms.map((r) => r.type || ""))], [rooms]);
   const viewTypes = useMemo(() => ["all", ...new Set(rooms.map((r) => r.view || ""))], [rooms]);
@@ -164,8 +173,6 @@ export default function RoomsPage() {
         <div className="absolute top-1/3 -left-40 w-[400px] h-[400px] bg-orange-100/30 rounded-full blur-3xl" />
       </div>
 
-      {/* Navigation */}
-      
       {/* Mobile Drawer */}
       <div className={`fixed inset-0 bg-black/40 backdrop-blur-sm z-40 transition-opacity lg:hidden ${mobileMenuOpen ? "opacity-100" : "opacity-0 pointer-events-none"}`} onClick={() => setMobileMenuOpen(false)} />
       <div className={`fixed top-0 right-0 bottom-0 w-[280px] bg-white z-50 shadow-2xl flex flex-col transition-transform duration-300 lg:hidden ${mobileMenuOpen ? "translate-x-0" : "translate-x-full"}`}>
@@ -311,20 +318,35 @@ export default function RoomsPage() {
             <h2 className="text-sm sm:text-lg font-semibold text-gray-900">
               <span className="text-amber-600">{filteredAndSortedRooms.length}</span> rooms found
             </h2>
-            {activeFilterCount > 0 && (
+            <div className="flex items-center gap-3">
+              {lastUpdated && (
+                <span className="hidden sm:inline text-[10px] text-gray-400">
+                  Updated {lastUpdated.toLocaleTimeString()}
+                </span>
+              )}
               <button
-                onClick={() => {
-                  setSearchTerm("");
-                  setSelectedType("all");
-                  setSelectedView("all");
-                  setPriceRange([0, 10000]);
-                }}
+                onClick={() => fetchRooms()}
                 className="text-xs sm:text-sm text-gray-500 hover:text-amber-600 flex items-center gap-1 transition-colors"
+                title="Refresh rooms"
               >
-                <RotateCcw className="w-3 h-3" />
-                Reset
+                <RefreshCw className="w-3 h-3" />
+                Refresh
               </button>
-            )}
+              {activeFilterCount > 0 && (
+                <button
+                  onClick={() => {
+                    setSearchTerm("");
+                    setSelectedType("all");
+                    setSelectedView("all");
+                    setPriceRange([0, 10000]);
+                  }}
+                  className="text-xs sm:text-sm text-gray-500 hover:text-amber-600 flex items-center gap-1 transition-colors"
+                >
+                  <RotateCcw className="w-3 h-3" />
+                  Reset
+                </button>
+              )}
+            </div>
           </div>
 
           {/* Grid - 2 cols on ALL mobile, 3 on md+ */}

@@ -39,6 +39,7 @@ import {
   ChevronRight,
   ShieldCheck,
   Share2,
+  RefreshCw,
   AlertCircle,
   Loader2,
   Gem,
@@ -107,28 +108,36 @@ export default function RoomDetailPage({ params }) {
   const roomId = params.id;
   const { user } = useContext(Context);
 
-  useEffect(() => {
-    const fetchRoom = async () => {
-      try {
-        setLoading(true);
-        setError(null);
-        const res = await fetch(`${backendUrl}/room/${roomId}`);
-        const data = await res.json();
+  const fetchRoom = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const res = await fetch(`${backendUrl}/room/${roomId}`);
+      const data = await res.json();
 
-        if (data.success) {
-          setRoom(data.data);
-        } else {
-          setError(data.message || "Failed to fetch room details");
-        }
-      } catch (err) {
-        setError("Unable to connect to the server. Please try again later.");
-      } finally {
-        setLoading(false);
+      if (data.success) {
+        setRoom(data.data);
+      } else {
+        setError(data.message || "Failed to fetch room details");
       }
-    };
-
-    fetchRoom();
+    } catch (err) {
+      setError("Unable to connect to the server. Please try again later.");
+    } finally {
+      setLoading(false);
+    }
   }, [roomId]);
+
+  useEffect(() => {
+    fetchRoom();
+  }, [fetchRoom]);
+
+  // Auto-refresh every 30 seconds to catch status changes (room becoming available)
+  useEffect(() => {
+    const interval = setInterval(() => {
+      fetchRoom();
+    }, 30000);
+    return () => clearInterval(interval);
+  }, [fetchRoom]);
 
   const calculateNights = useCallback(() => {
     if (checkInDate && checkOutDate) {

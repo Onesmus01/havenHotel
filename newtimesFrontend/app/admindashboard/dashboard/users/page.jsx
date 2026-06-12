@@ -40,9 +40,18 @@ export default function UsersPage() {
   useEffect(() => {
     const fetchUsers = async () => {
       try {
+        const token = localStorage.getItem("token");
+        if (!token) {
+          toast.error("You must be logged in to view users");
+          setLoading(false);
+          return;
+        }
         setLoading(true);
         const res = await fetch(`${backendUrl}/user/all-users`, {
           credentials: "include",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
         });
         const data = await res.json();
         if (res.ok) setUsers(data.data || []);

@@ -1,6 +1,9 @@
 import Room from "../models/roomModel.js";
 import { body, validationResult } from "express-validator";
 import cloudinary from "../config/cloudinary.js";
+import Booking from "../models/bookingModel.js";
+import { autoExpireBookings } from "./bookingController.js";
+
 
 /**
  * Validation middleware for creating a room
@@ -252,8 +255,44 @@ export const updateRoom = async (req, res) => {
   }
 };;
 
+export const syncRoomStatuses = async () => {
+  try {
+    const now = new Date();
+
+    // Get all rooms currently marked as booked
+    const bookedRooms = await Room.find({ status: "booked" });
+
+    let fixedCount = 0;
+    for (const room of bookedRooms) {
+      // Check if there's an active or future confirmed booking
+      const activeBooking = await Booking.findOne({
+        roomId: room._id,
+        status: "confirmed",
+        checkOut: { $gt: now },
+      });
+
+      if (!activeBooking) {
+        // No active/future confirmed booking — room should be available
+        await Room.findByIdAndUpdate(room._id, { status: "available" });
+        fixedCount++;
+      }
+    }
+
+    if (fixedCount > 0) {
+      console.log(`[SYNC] Fixed ${fixedCount} rooms that were incorrectly marked booked`);
+    }
+    return { fixed: fixedCount };
+  } catch (error) {
+    console.error("[SYNC ERROR]", error);
+    throw error;
+  }
+};
+
 export const getAllRooms = async (req, res) => {
   try {
+
+    await autoExpireBookings();
+    await syncRoomStatuses();
     const rooms = await Room.find().sort({ floor: 1, roomNumber: 1 }); // sorted by floor, then room number
     res.status(200).json({ success: true, count: rooms.length, data: rooms });
   } catch (err) {
@@ -448,28 +487,58 @@ export const getAllHeroImages = async (req, res) => {
 };
 
 export const setActiveHeroImage = async (req, res) => {
-  
 }
-// GET /room/:id
-// export const getRoomById = async (req, res) => {
-//   try {
-//     const { id } = req.params;
 
-//     // Validate ID
-//     if (!id.match(/^[0-9a-fA-F]{24}$/)) {
-//       return res.status(400).json({ success: false, message: "Invalid room ID" });
-//     }
+export const autoReleaseExpiredRooms = async () => {
+  try {
+    const now = new Date();
 
-//     const room = await Room.findById(id);
+    // Find confirmed bookings that have passed their checkout date
+    // and haven't been marked as expired yet
+    const expiredBookings = await Booking.find({
+      status: "confirmed",
+      checkOut: { $lt: now },  // checkout date is in the past
+    });
 
-//     if (!room) {
-//       return res.status(404).json({ success: false, message: "Room not found" });
-//     }
+    if (expiredBookings.length === 0) {
+      console.log("[AUTO-RELEASE] No expired bookings found");
+      return { released: 0, bookings: [] };
+    }
 
-//     res.status(200).json({ success: true, data: room });
-//   } catch (err) {
-//     console.error("Error fetching room by ID:", err);
-//     res.status(500).json({ success: false, message: "Server error" });
-//   }
-// };
+    const releasedRooms = [];
 
+    for (const booking of expiredBookings) {
+      // Mark booking as expired (completed stay)
+      booking.status = "expired";
+      await booking.save();
+
+      // Check if room has any OTHER confirmed bookings in the future
+      // Only release if no future confirmed bookings exist
+      const futureBooking = await Booking.findOne({
+        roomId: booking.roomId,
+        status: "confirmed",
+        checkIn: { $gte: now },  // future booking
+      });
+
+      if (!futureBooking) {
+        // Safe to release — no future bookings for this room
+        await Room.findByIdAndUpdate(booking.roomId, { status: "available" });
+        releasedRooms.push({
+          roomId: booking.roomId,
+          roomNumber: booking.roomNumber,
+          bookingId: booking._id,
+          checkOut: booking.checkOut,
+        });
+        console.log(`[AUTO-RELEASE] Room ${booking.roomNumber} released`);
+      } else {
+        console.log(`[AUTO-RELEASE] Room ${booking.roomNumber} kept booked — future reservation exists`);
+      }
+    }
+
+    console.log(`[AUTO-RELEASE] Processed ${expiredBookings.length} bookings, released ${releasedRooms.length} rooms`);
+    return { released: releasedRooms.length, bookings: releasedRooms };
+  } catch (error) {
+    console.error("[AUTO-RELEASE ERROR]", error);
+    throw error;
+  }
+};

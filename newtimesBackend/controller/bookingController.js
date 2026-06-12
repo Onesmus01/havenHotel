@@ -1,9 +1,9 @@
 import Booking from "../models/bookingModel.js";
 import Room from "../models/roomModel.js";
+import User from "../models/userModel.js";
+import Payment from "../models/paymentModel.js";
+import mongoose from "mongoose";
 import { body, validationResult } from "express-validator";
-import Payment from '../models/paymentModel.js';
-import User from '../models/userModel.js';
-import mongoose from 'mongoose';
 
 /**
  * Validation middleware for booking
@@ -28,9 +28,7 @@ export const validateBooking = [
   body("guests").isInt({ min: 1 }).withMessage("Guests must be at least 1"),
 ];
 
-/**
- * Create a booking
- */
+
 export const createBooking = async (req, res) => {
   try {
     const errors = validationResult(req);
@@ -111,8 +109,6 @@ export const createBooking = async (req, res) => {
 
     await booking.save();
 
-    // ❌ NOTHING HERE — room stays available until payment succeeds
-
     res.status(201).json({
       success: true,
       message: "Booking created successfully. Complete payment to confirm.",
@@ -124,10 +120,6 @@ export const createBooking = async (req, res) => {
   }
 };
 
-/**
- * Confirm booking after successful payment
- * Call this from your payment webhook or payment success handler
- */
 export const confirmBooking = async (req, res) => {
   try {
     const { bookingId } = req.body;
@@ -137,17 +129,14 @@ export const confirmBooking = async (req, res) => {
       return res.status(404).json({ success: false, message: "Booking not found" });
     }
 
-    // Only confirm if currently pending
     if (booking.status !== "pending") {
       return res.status(400).json({ success: false, message: "Booking is not pending" });
     }
 
-    // Update booking
     booking.status = "confirmed";
-    booking.paymentStatus = "paid"; // or "success" depending on your flow
+    booking.paymentStatus = "paid";
     await booking.save();
 
-    // ✅ NOW mark room as booked — only after payment succeeds
     await Room.findByIdAndUpdate(booking.roomId, { status: "booked" });
 
     res.status(200).json({
@@ -161,9 +150,6 @@ export const confirmBooking = async (req, res) => {
   }
 };
 
-/**
- * Update booking payment status (call from payment controller)
- */
 export const updateBookingPaymentStatus = async (bookingId, paymentStatus) => {
   const booking = await Booking.findById(bookingId);
   if (!booking) return;
@@ -172,18 +158,14 @@ export const updateBookingPaymentStatus = async (bookingId, paymentStatus) => {
 
   if (paymentStatus === "success" || paymentStatus === "paid") {
     booking.status = "confirmed";
-    // Lock the room only now
     await Room.findByIdAndUpdate(booking.roomId, { status: "booked" });
   } else if (paymentStatus === "failed" || paymentStatus === "cancelled") {
     booking.status = "cancelled";
-    // Room stays available — no need to update Room status
   }
 
   await booking.save();
   return booking;
 };
-
-// Get booking history for a user
 export const getUserBookingHistory = async (req, res) => {
   try {
     const userId = req.userId;
@@ -213,13 +195,12 @@ export const cancelBooking = async (req, res) => {
       return res.status(404).json({ success: false, message: "Booking not found" });
     }
 
-    const wasConfirmed = booking.status === "confirmed"; // 🔥 CHECK BEFORE CHANGING
+    const wasConfirmed = booking.status === "confirmed";
 
     booking.status = "cancelled";
     booking.paymentStatus = "cancelled";
     await booking.save();
 
-    // Free room only if it was actually locked
     if (wasConfirmed) {
       await Room.findByIdAndUpdate(booking.roomId, { status: "available" });
     }
@@ -237,7 +218,7 @@ export const cancelBooking = async (req, res) => {
 export const getAllBookings = async (req, res) => {
   try {
     const bookings = await Booking.find()
-      .sort({ createdAt: -1 }) // latest → oldest
+      .sort({ createdAt: -1 })
       .populate("roomId", "type roomNumber images price size capacity view floor");
 
     res.status(200).json({
@@ -253,15 +234,8 @@ export const getAllBookings = async (req, res) => {
     });
   }
 };
-
-
-// ─── GET MY BOOKINGS ───
-// Fetches confirmed bookings for the logged-in user (by email)
 export const getMyBookings = async (req, res) => {
   try {
-    // 🔥 FIX: Get user email from auth middleware
-    // Your auth middleware sets req.userId (string) and possibly req.user
-    // We need to fetch the user to get their email
     const userId = req.userId || req.user?._id;
 
     if (!userId) {
@@ -271,7 +245,6 @@ export const getMyBookings = async (req, res) => {
       });
     }
 
-    // Fetch user to get email
     const user = await User.findById(userId).select("email name");
     if (!user) {
       return res.status(401).json({
@@ -280,26 +253,32 @@ export const getMyBookings = async (req, res) => {
       });
     }
 
-    // 🔥 FIX: Only fetch CONFIRMED bookings matching user's email
-    // Your Booking model stores email but NOT userId, so we match by email
+    // Fetch confirmed OR expired bookings for this user
     const bookings = await Booking.find({
       email: user.email,
-      status: "confirmed", // Only confirmed bookings
+      status: { $in: ["confirmed", "expired"] },
     })
       .populate("roomId", "type images location amenities roomNumber view size")
       .sort({ createdAt: -1 });
 
-    // Enrich with computed status based on dates
     const now = new Date();
     const enriched = bookings.map((b) => {
       const checkIn = new Date(b.checkIn);
       const checkOut = new Date(b.checkOut);
       let computedStatus = "upcoming";
 
-      if (now >= checkIn && now < checkOut) {
+      if (b.status === "expired") {
+        computedStatus = "completed";
+      } else if (now >= checkIn && now < checkOut) {
         computedStatus = "active";
       } else if (now >= checkOut) {
-        computedStatus = "expired";
+        computedStatus = "completed";
+        // Also auto-mark if cron hasn't run yet
+        if (b.status === "confirmed") {
+          b.status = "expired";
+          b.save().catch(() => {});
+          Room.findByIdAndUpdate(b.roomId, { status: "available" }).catch(() => {});
+        }
       }
 
       return {
@@ -319,8 +298,6 @@ export const getMyBookings = async (req, res) => {
     res.status(500).json({ success: false, message: error.message });
   }
 };
-
-// ─── GET SINGLE BOOKING ───
 export const getBookingById = async (req, res) => {
   try {
     const { id } = req.params;
@@ -338,14 +315,13 @@ export const getBookingById = async (req, res) => {
     const booking = await Booking.findOne({
       _id: id,
       email: user.email,
-      status: "confirmed",
+      status: { $in: ["confirmed", "expired"] },
     }).populate("roomId", "type images location amenities description roomNumber view size");
 
     if (!booking) {
       return res.status(404).json({ success: false, message: "Booking not found" });
     }
 
-    // Get payment history for this booking
     const payments = await Payment.find({ booking: id })
       .select("amount status method createdAt mpesaReceiptNumber")
       .sort({ createdAt: -1 });
@@ -360,7 +336,6 @@ export const getBookingById = async (req, res) => {
   }
 };
 
-// ─── EXTEND BOOKING (INITIATE) ───
 export const initiateExtendBooking = async (req, res) => {
   try {
     const { id } = req.params;
@@ -396,7 +371,6 @@ export const initiateExtendBooking = async (req, res) => {
     const now = new Date();
     const checkOut = new Date(booking.checkOut);
 
-    // Can only extend active or upcoming bookings
     if (now > checkOut) {
       return res.status(400).json({
         success: false,
@@ -404,11 +378,9 @@ export const initiateExtendBooking = async (req, res) => {
       });
     }
 
-    // Calculate extension cost
     const extensionCost = additionalNights * booking.pricePerNight;
     const newCheckOut = new Date(checkOut.getTime() + additionalNights * 24 * 60 * 60 * 1000);
 
-    // Create a pending payment record for the extension
     const extensionPayment = await Payment.create({
       user: userId,
       booking: id,
@@ -440,7 +412,6 @@ export const initiateExtendBooking = async (req, res) => {
   }
 };
 
-// ─── CONFIRM EXTENSION AFTER PAYMENT ───
 export const confirmExtendBooking = async (req, res) => {
   const session = await mongoose.startSession();
   session.startTransaction();
@@ -455,7 +426,6 @@ export const confirmExtendBooking = async (req, res) => {
       return res.status(401).json({ success: false, message: "Authentication required" });
     }
 
-    // Verify payment
     const payment = await Payment.findOne({
       _id: paymentId,
       user: userId,
@@ -468,26 +438,22 @@ export const confirmExtendBooking = async (req, res) => {
       return res.status(404).json({ success: false, message: "Payment not found or already processed" });
     }
 
-    // Update payment to success
     payment.status = "success";
     payment.mpesaReceiptNumber = mpesaReceiptNumber || payment.mpesaReceiptNumber;
     await payment.save({ session });
 
-    // Get booking and extend
     const booking = await Booking.findById(id).session(session);
 
     const additionalNights = Math.round(payment.amount / booking.pricePerNight);
     const oldCheckOut = new Date(booking.checkOut);
     const newCheckOut = new Date(oldCheckOut.getTime() + additionalNights * 24 * 60 * 60 * 1000);
 
-    // Update booking
     booking.checkOut = newCheckOut;
     booking.nights += additionalNights;
     booking.totalAmount += payment.amount;
     booking.roomTotal += payment.amount;
     await booking.save({ session });
 
-    // Update user stats
     await User.findByIdAndUpdate(
       userId,
       {
@@ -517,8 +483,6 @@ export const confirmExtendBooking = async (req, res) => {
     session.endSession();
   }
 };
-
-// ─── DELETE EXPIRED BOOKING ───
 export const deleteBooking = async (req, res) => {
   try {
     const { id } = req.params;
@@ -542,7 +506,6 @@ export const deleteBooking = async (req, res) => {
       return res.status(404).json({ success: false, message: "Booking not found" });
     }
 
-    // Only allow deletion of expired bookings
     const now = new Date();
     if (new Date(booking.checkOut) > now) {
       return res.status(400).json({
@@ -562,17 +525,46 @@ export const deleteBooking = async (req, res) => {
     res.status(500).json({ success: false, message: error.message });
   }
 };
-
-// ─── AUTO-EXPIRE CRON JOB HELPER ───
 export const autoExpireBookings = async () => {
   try {
     const now = new Date();
-    const expired = await Booking.find({
+
+    const expiredBookings = await Booking.find({
+      status: "confirmed",
       checkOut: { $lt: now },
-      status: { $nin: ["cancelled"] },
     });
-    console.log(`Found ${expired.length} expired bookings`);
+
+    if (expiredBookings.length === 0) {
+      console.log("[AUTO-EXPIRE] No expired bookings found");
+      return { expired: 0, released: 0 };
+    }
+
+    let releasedCount = 0;
+
+    for (const booking of expiredBookings) {
+      booking.status = "expired";
+      await booking.save();
+
+      const activeOrFutureBooking = await Booking.findOne({
+        roomId: booking.roomId,
+        status: "confirmed",
+        _id: { $ne: booking._id },
+        checkOut: { $gt: now },
+      });
+
+      if (!activeOrFutureBooking) {
+        await Room.findByIdAndUpdate(booking.roomId, { status: "available" });
+        releasedCount++;
+        console.log(`[AUTO-EXPIRE] Room ${booking.roomNumber} released`);
+      } else {
+        console.log(`[AUTO-EXPIRE] Room ${booking.roomNumber} kept booked — future reservation exists`);
+      }
+    }
+
+    console.log(`[AUTO-EXPIRE] ${expiredBookings.length} bookings expired, ${releasedCount} rooms released`);
+    return { expired: expiredBookings.length, released: releasedCount };
   } catch (error) {
-    console.error("Auto-expire error:", error);
+    console.error("[AUTO-EXPIRE ERROR]", error);
+    throw error;
   }
 };

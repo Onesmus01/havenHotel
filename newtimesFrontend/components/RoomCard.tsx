@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Star,
@@ -14,6 +14,7 @@ import {
   BadgeCheck,
   Wrench,
   Router,
+  RefreshCw,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import RoomsBanner from "./RoomsBanner";
@@ -192,7 +193,7 @@ export default function RoomsPage() {
   const [sort, setSort] = useState("recommended");
   const [favorites, setFavorites] = useState(new Set());
 
-  const fetchRooms = async () => {
+  const fetchRooms = useCallback(async () => {
     try {
       const res = await fetch(`${backendUrl}/room/get-rooms`);
       const data = await res.json();
@@ -213,11 +214,19 @@ export default function RoomsPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     fetchRooms();
-  }, []);
+  }, [fetchRooms]);
+
+  // Auto-refresh every 30 seconds to catch status changes (rooms becoming available)
+  useEffect(() => {
+    const interval = setInterval(() => {
+      fetchRooms();
+    }, 30000);
+    return () => clearInterval(interval);
+  }, [fetchRooms]);
 
   const filtered = rooms.filter((r) => {
     if (filter === "all") return true;
@@ -268,6 +277,13 @@ export default function RoomsPage() {
             </div>
 
             <div className="flex flex-wrap items-center gap-2">
+              <button
+                onClick={fetchRooms}
+                className="flex h-8 w-8 items-center justify-center rounded-full border border-stone-200 bg-white text-stone-500 transition-colors hover:text-stone-900"
+                title="Refresh rooms"
+              >
+                <RefreshCw className="h-3.5 w-3.5" />
+              </button>
               <div className="flex overflow-hidden rounded-full border border-stone-200 bg-white p-0.5">
                 {[
                   { key: "all", label: "All" },

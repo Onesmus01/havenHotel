@@ -1,4 +1,3 @@
-// app/my-bookings/page.tsx
 "use client";
 
 import React, { useState, useEffect, useCallback, useRef } from "react";
@@ -18,6 +17,7 @@ import {
   ArrowRight,
   Timer,
   Loader2,
+  RefreshCw,
 } from "lucide-react";
 
 // ─── API CONFIG ───
@@ -507,7 +507,7 @@ export default function MyBookingsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchBookings = async () => {
+  const fetchBookings = useCallback(async () => {
     try {
       setLoading(true);
       const res = await fetch(`${backendUrl}/bookings/my-bookings`, {
@@ -529,11 +529,19 @@ export default function MyBookingsPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [router]);
 
   useEffect(() => {
     fetchBookings();
-  }, []);
+  }, [fetchBookings]);
+
+  // Auto-refresh every 30 seconds to catch status changes (bookings expiring)
+  useEffect(() => {
+    const interval = setInterval(() => {
+      fetchBookings();
+    }, 30000);
+    return () => clearInterval(interval);
+  }, [fetchBookings]);
 
   // Check if returning from successful payment extension
   useEffect(() => {
@@ -620,6 +628,14 @@ export default function MyBookingsPage() {
                 Manage your hotel reservations
               </p>
             </div>
+            <button
+              onClick={fetchBookings}
+              className="flex items-center gap-2 px-3 py-2 rounded-lg border border-slate-200 bg-white text-slate-600 text-sm font-medium hover:text-slate-900 hover:border-slate-300 transition-colors"
+              title="Refresh bookings"
+            >
+              <RefreshCw size={16} />
+              Refresh
+            </button>
             <div className="flex items-center gap-2 bg-slate-100 rounded-xl p-1">
               {[
                 { key: "all", label: "All", count: bookings.length },

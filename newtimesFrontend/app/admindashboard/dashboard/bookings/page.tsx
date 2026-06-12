@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { toast } from "react-hot-toast";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -21,8 +21,10 @@ import {
   Eye,
   Edit,
   Trash2,
+  RefreshCw,
 } from "lucide-react";
 import { format } from "date-fns";
+import { useRouter } from "next/navigation";
 
 const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8080/api";
 
@@ -38,36 +40,70 @@ const getStatusColor = (status) => {
       return "bg-red-100 text-red-800 border-red-200";
     case "pending":
       return "bg-yellow-100 text-yellow-800 border-yellow-200";
+    case "expired":
+      return "bg-purple-100 text-purple-800 border-purple-200";
     default:
       return "bg-gray-100 text-gray-800 border-gray-200";
   }
 };
 
 export default function BookingsPage() {
+  const router = useRouter();
   const [bookings, setBookings] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    const fetchBookings = async () => {
-      const token = localStorage.getItem("token");
-      try {
-        setLoading(true);
-        const res = await fetch(`${backendUrl}/bookings/all-bookings`, {
-          credentials: "include",
-          headers: { "Authorization": `Bearer ${token}` },
-        });
-        const data = await res.json();
-        if (res.ok) setBookings(data.data || []);
-      } catch (err) {
-        toast.error("Failed to fetch bookings");
-      } finally {
-        setLoading(false);
+  const handleDeleteBooking = async (bookingId) => {
+    if (!confirm("Are you sure you want to delete this booking?")) return;
+
+    const token = localStorage.getItem("token");
+    try {
+      const res = await fetch(`${backendUrl}/bookings/${bookingId}`, {
+        method: "DELETE",
+        credentials: "include",
+        headers: { "Authorization": `Bearer ${token}` },
+      });
+      const data = await res.json();
+      if (res.ok) {
+        toast.success("Booking deleted successfully");
+        fetchBookings();
+      } else {
+        toast.error(data.message || "Failed to delete booking");
       }
-    };
-    fetchBookings();
+    } catch (err) {
+      toast.error("Error deleting booking");
+    }
+  };
+
+  const fetchBookings = useCallback(async () => {
+    const token = localStorage.getItem("token");
+    try {
+      setLoading(true);
+      const res = await fetch(`${backendUrl}/bookings/all-bookings`, {
+        credentials: "include",
+        headers: { "Authorization": `Bearer ${token}` },
+      });
+      const data = await res.json();
+      if (res.ok) setBookings(data.data || []);
+    } catch (err) {
+      toast.error("Failed to fetch bookings");
+    } finally {
+      setLoading(false);
+    }
   }, []);
+
+  useEffect(() => {
+    fetchBookings();
+  }, [fetchBookings]);
+
+  // Auto-refresh every 30 seconds to catch status changes (expirations)
+  useEffect(() => {
+    const interval = setInterval(() => {
+      fetchBookings();
+    }, 30000);
+    return () => clearInterval(interval);
+  }, [fetchBookings]);
 
   const filtered = bookings.filter((b) => {
     const fullName = `${b.firstName || ""} ${b.lastName || ""}`.toLowerCase();
@@ -87,6 +123,10 @@ export default function BookingsPage() {
           <p className="text-sm text-gray-500">Manage all reservations</p>
         </div>
         <div className="flex gap-2">
+          <Button variant="outline" className="bg-white" onClick={fetchBookings}>
+            <RefreshCw className="w-4 h-4 mr-2" />
+            Refresh
+          </Button>
           <Button variant="outline" className="bg-white">
             <Download className="w-4 h-4 mr-2" />
             Export
@@ -118,6 +158,7 @@ export default function BookingsPage() {
             <SelectItem value="confirmed">Confirmed</SelectItem>
             <SelectItem value="checked-in">Checked In</SelectItem>
             <SelectItem value="checked-out">Checked Out</SelectItem>
+            <SelectItem value="expired">Expired</SelectItem>
             <SelectItem value="cancelled">Cancelled</SelectItem>
             <SelectItem value="pending">Pending</SelectItem>
           </SelectContent>
@@ -194,13 +235,30 @@ export default function BookingsPage() {
                       </td>
                       <td className="p-4">
                         <div className="flex justify-end gap-1">
-                          <Button variant="ghost" size="sm">
+                          <Button 
+                            variant="ghost" 
+                            size="sm"
+                            onClick={() => router.push(`/admin/bookings/${booking._id}`)}
+                            title="View booking"
+                          >
                             <Eye className="w-4 h-4" />
                           </Button>
-                          <Button variant="ghost" size="sm">
+                          <Button 
+                            variant="ghost" 
+                            size="sm"
+                            onClick={() => router.push(`/admin/bookings/${booking._id}/edit`)}
+                            title="Edit booking"
+                          >
                             <Edit className="w-4 h-4" />
                           </Button>
-                          <Button variant="ghost" size="sm" className="text-red-600 hover:text-red-700">
+                          <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            className="text-red-600 hover:text-red-700"
+                            onClick={() => handleDeleteBooking(booking._id)}
+                            disabled={booking.status === "expired"}
+                            title={booking.status === "expired" ? "Expired bookings cannot be deleted" : "Delete booking"}
+                          >
                             <Trash2 className="w-4 h-4" />
                           </Button>
                         </div>
